@@ -68,6 +68,12 @@ Health check:
 
 - `GET /health`
 
+## Environment
+
+- `OTP_TTL_MINUTES`: OTP validity window in minutes.
+- `RATE_LIMIT_WINDOW_MS`: request limit window duration in milliseconds.
+- `RATE_LIMIT_MAX_REQUESTS`: max requests allowed per IP in each window.
+
 ## Scripts
 
 - `npm run dev` - run in development with hot reload

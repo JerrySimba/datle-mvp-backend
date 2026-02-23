@@ -1,6 +1,8 @@
 import cors from "cors";
 import express from "express";
 
+import { rateLimiter } from "./middleware/rateLimiter";
+import { requestLogger } from "./middleware/requestLogger";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { authRouter } from "./modules/auth/auth.routes";
 import { respondentsRouter } from "./modules/respondents/respondents.routes";
@@ -11,6 +13,8 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(requestLogger);
+app.use(rateLimiter);
 
 app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });
