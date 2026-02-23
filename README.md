@@ -107,6 +107,7 @@ Health check:
 - `GET /api/studies`
 - `GET /api/studies/:id`
 - `GET /api/studies/:id/responses`
+- `GET /api/studies/:id/responses.csv`
 - `POST /api/responses`
 - `GET /api/responses/study/:studyId`
 
