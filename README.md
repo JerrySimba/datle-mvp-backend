@@ -58,6 +58,22 @@ npm run prisma:generate
 npm run prisma:migrate -- --name init
 ```
 
+## Production Setup
+
+1. Copy `.env.production.example` to your deployment platform's environment variable settings.
+2. Set secure production values for:
+   - `DATABASE_URL`
+   - `JWT_SECRET`
+3. Keep rate limit values unless you need stricter throughput controls:
+   - `RATE_LIMIT_WINDOW_MS`
+   - `RATE_LIMIT_MAX_REQUESTS`
+4. Build and run:
+
+```bash
+npm run build
+npm run start
+```
+
 ## Run
 
 ```bash
@@ -107,3 +123,7 @@ Health check:
 - OTP is currently a placeholder flow with console delivery for local MVP usage.
 - Validation logs are persisted through the `ValidationLog` Prisma model for future consistency and quality checks.
 - The schema uses PostgreSQL-compatible types and naming to stay ready for Supabase.
+
+## Notes
+
+- The Analytics should have a ready dashboard that can be tailored to #Precisely What the client wants and/or a full analytics dashboard that preceeds only decision making
