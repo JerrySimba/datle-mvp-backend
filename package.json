@@ -1,0 +1,33 @@
+{
+    "name": "datle-mvp-backend",
+    "version": "0.1.0",
+    "private": true,
+    "description": "Backend-first MVP for DatLe B2B consumer intelligence platform",
+    "main": "dist/server.js",
+    "scripts": {
+        "dev": "tsx watch src/server.ts",
+        "build": "tsc",
+        "start": "node dist/server.js",
+        "test": "vitest run",
+        "prisma:generate": "prisma generate",
+        "prisma:migrate": "prisma migrate dev"
+    },
+    "dependencies": {
+        "@prisma/client": "^5.21.1",
+        "cors": "^2.8.5",
+        "dotenv": "^16.4.5",
+        "express": "^4.21.1",
+        "zod": "^3.23.8"
+    },
+    "devDependencies": {
+        "@types/cors": "^2.8.17",
+        "@types/express": "^5.0.0",
+        "@types/node": "^22.8.7",
+        "@types/supertest": "^6.0.3",
+        "prisma": "^5.21.1",
+        "supertest": "^7.1.1",
+        "tsx": "^4.19.2",
+        "typescript": "^5.6.3",
+        "vitest": "^4.0.18"
+    }
+}

@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+enum StudyStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum ValidationStatus {
+  PASS
+  FAIL
+  WARNING
+}
+
+model Respondent {
+  id               String          @id @default(cuid())
+  email            String          @unique
+  age              Int
+  gender           String
+  location         String
+  incomeBand       String          @map("income_band")
+  education        String
+  employmentStatus String          @map("employment_status")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+  responses        Response[]
+
+  @@map("respondents")
+}
+
+model Study {
+  id             String      @id @default(cuid())
+  title          String
+  targetCriteria Json        @map("target_criteria")
+  status         StudyStatus @default(DRAFT)
+  createdBy      String      @map("created_by")
+  startDate      DateTime?   @map("start_date")
+  endDate        DateTime?   @map("end_date")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+  responses      Response[]
+
+  @@map("studies")
+}
+
+model Response {
+  id           String     @id @default(cuid())
+  respondentId String     @map("respondent_id")
+  studyId      String     @map("study_id")
+  payload      Json
+  submittedAt  DateTime   @default(now()) @map("submitted_at")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+  respondent   Respondent @relation(fields: [respondentId], references: [id], onDelete: Cascade)
+  study        Study      @relation(fields: [studyId], references: [id], onDelete: Cascade)
+
+  @@unique([respondentId, studyId])
+  @@index([studyId])
+  @@index([respondentId])
+  @@map("responses")
+}
+
+model ValidationLog {
+  id         String           @id @default(cuid())
+  entityType String           @map("entity_type")
+  entityId   String           @map("entity_id")
+  checkType  String           @map("check_type")
+  status     ValidationStatus
+  details    Json?
+  createdAt  DateTime         @default(now()) @map("created_at")
+
+  @@index([entityType, entityId])
+  @@map("validation_logs")
+}
