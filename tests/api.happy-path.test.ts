@@ -89,6 +89,15 @@ describe("DatLe API happy path", () => {
     expect(csvRes.text).toContain("q1_preferred_brand");
     expect(csvRes.text).toContain("Brand A");
 
+    const analyticsRes = await request(app).get(`/api/analytics/studies/${studyRes.body.id}/summary`);
+
+    expect(analyticsRes.status).toBe(200);
+    expect(analyticsRes.body.study.id).toBe(studyRes.body.id);
+    expect(analyticsRes.body.metrics.total_responses).toBe(1);
+    expect(analyticsRes.body.metrics.unique_respondents).toBe(1);
+    expect(analyticsRes.body.respondent_breakdowns.gender[0].value).toBe("female");
+    expect(analyticsRes.body.respondent_breakdowns.gender[0].count).toBe(1);
+
     const validationLog = await prisma.validationLog.findFirst({
       where: {
         entityType: "RESPONSE",

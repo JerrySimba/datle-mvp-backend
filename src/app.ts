@@ -4,6 +4,7 @@ import express from "express";
 import { rateLimiter } from "./middleware/rateLimiter";
 import { requestLogger } from "./middleware/requestLogger";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
+import { analyticsRouter } from "./modules/analytics/analytics.routes";
 import { authRouter } from "./modules/auth/auth.routes";
 import { respondentsRouter } from "./modules/respondents/respondents.routes";
 import { studiesRouter } from "./modules/studies/studies.routes";
@@ -24,6 +25,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/respondents", respondentsRouter);
 app.use("/api/studies", studiesRouter);
 app.use("/api/responses", responsesRouter);
+app.use("/api/analytics", analyticsRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

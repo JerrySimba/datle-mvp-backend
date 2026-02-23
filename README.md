@@ -110,6 +110,7 @@ Health check:
 - `GET /api/studies/:id/responses.csv`
 - `POST /api/responses`
 - `GET /api/responses/study/:studyId`
+- `GET /api/analytics/studies/:id/summary`
 
 ## Auth for Write Endpoints
 
