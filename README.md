@@ -98,6 +98,7 @@ Health check:
 - `npm run start` - run compiled server
 - `npm run test` - run minimal API integration tests
 - `npm run test:dashboard:build` - frontend smoke test (dashboard build)
+- `npm run demo:seed` - reset and seed a consistent demo study dataset
 
 ## Dashboard Demo (Step 2-5)
 
@@ -126,6 +127,12 @@ If dashboard cannot load data:
 1. Ensure backend is running on `http://localhost:4000`.
 2. Ensure backend `.env` has `CORS_ORIGIN="http://localhost:5173"`.
 3. Restart backend after changing env values.
+
+Generate predictable demo data:
+
+```bash
+npm run demo:seed
+```
 
 ## Core API routes
 

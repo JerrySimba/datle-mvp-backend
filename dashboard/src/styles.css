@@ -123,6 +123,52 @@ input {
   gap: 8px;
 }
 
+.chart-wrap {
+  width: 100%;
+  overflow-x: auto;
+  margin: 8px 0 14px;
+}
+
+.chart-svg {
+  width: 100%;
+  min-width: 520px;
+  display: block;
+}
+
+.axis-line {
+  stroke: #c9bfa7;
+  stroke-width: 1.4;
+}
+
+.line-path {
+  fill: none;
+  stroke: #0f766e;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.line-dot {
+  fill: #84cc16;
+  stroke: #0f766e;
+  stroke-width: 1.5;
+}
+
+.bar-rect {
+  fill: #0d9488;
+}
+
+.axis-label {
+  font-size: 10px;
+  fill: #4b5563;
+}
+
+.chart-empty {
+  color: #6b7280;
+  font-size: 14px;
+  padding: 8px 0;
+}
+
 .bar {
   border-radius: 999px;
   height: 10px;
