@@ -71,13 +71,42 @@ describe("DatLe API happy path", () => {
     expect(responseRes.status).toBe(201);
     expect(responseRes.body.id).toBeTruthy();
 
+    const respondentTwoRes = await request(app)
+      .post("/api/respondents")
+      .set(authHeader)
+      .send({
+        email: `respondent-two-${unique}@datle.com`,
+        age: 35,
+        gender: "male",
+        location: "Austin, TX",
+        income_band: "100k-150k",
+        education: "masters",
+        employment_status: "full_time"
+      });
+
+    expect(respondentTwoRes.status).toBe(201);
+    expect(respondentTwoRes.body.id).toBeTruthy();
+
+    const responseTwoRes = await request(app)
+      .post("/api/responses")
+      .set(authHeader)
+      .send({
+        respondent_id: respondentTwoRes.body.id,
+        study_id: studyRes.body.id,
+        payload: {
+          q1_preferred_brand: "Brand B",
+          q2_purchase_frequency: "monthly"
+        }
+      });
+
+    expect(responseTwoRes.status).toBe(201);
+    expect(responseTwoRes.body.id).toBeTruthy();
+
     const exportRes = await request(app).get(`/api/studies/${studyRes.body.id}/responses`);
 
     expect(exportRes.status).toBe(200);
     expect(exportRes.body.study.id).toBe(studyRes.body.id);
-    expect(exportRes.body.total_responses).toBe(1);
-    expect(exportRes.body.rows[0].respondent.id).toBe(respondentRes.body.id);
-    expect(exportRes.body.rows[0].payload.q1_preferred_brand).toBe("Brand A");
+    expect(exportRes.body.total_responses).toBe(2);
 
     const csvRes = await request(app).get(`/api/studies/${studyRes.body.id}/responses.csv`);
 
@@ -88,20 +117,46 @@ describe("DatLe API happy path", () => {
     expect(csvRes.text).toContain("respondent_email");
     expect(csvRes.text).toContain("q1_preferred_brand");
     expect(csvRes.text).toContain("Brand A");
+    expect(csvRes.text).toContain("Brand B");
 
     const analyticsRes = await request(app).get(`/api/analytics/studies/${studyRes.body.id}/summary`);
 
     expect(analyticsRes.status).toBe(200);
     expect(analyticsRes.body.study.id).toBe(studyRes.body.id);
-    expect(analyticsRes.body.metrics.total_responses).toBe(1);
-    expect(analyticsRes.body.metrics.unique_respondents).toBe(1);
-    expect(analyticsRes.body.respondent_breakdowns.gender[0].value).toBe("female");
-    expect(analyticsRes.body.respondent_breakdowns.gender[0].count).toBe(1);
+    expect(analyticsRes.body.metrics.total_responses).toBe(2);
+    expect(analyticsRes.body.metrics.unique_respondents).toBe(2);
+    expect(analyticsRes.body.respondent_breakdowns.gender).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ value: "female", count: 1 }),
+        expect.objectContaining({ value: "male", count: 1 })
+      ])
+    );
+    expect(analyticsRes.body.question_stats).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          question: "q1_preferred_brand",
+          total_answered: 2
+        })
+      ])
+    );
+
+    const filteredAnalyticsRes = await request(app).get(
+      `/api/analytics/studies/${studyRes.body.id}/summary?gender=female&location=Seattle%2C%20WA`
+    );
+
+    expect(filteredAnalyticsRes.status).toBe(200);
+    expect(filteredAnalyticsRes.body.metrics.total_responses).toBe(1);
+    expect(filteredAnalyticsRes.body.metrics.unique_respondents).toBe(1);
+    expect(filteredAnalyticsRes.body.applied_filters.gender).toBe("female");
+    expect(filteredAnalyticsRes.body.applied_filters.location).toBe("Seattle, WA");
+    expect(filteredAnalyticsRes.body.respondent_breakdowns.gender).toEqual([
+      expect.objectContaining({ value: "female", count: 1 })
+    ]);
 
     const validationLog = await prisma.validationLog.findFirst({
       where: {
         entityType: "RESPONSE",
-        entityId: responseRes.body.id,
+        entityId: responseTwoRes.body.id,
         checkType: "response_submission_consistency",
         status: "PASS"
       }

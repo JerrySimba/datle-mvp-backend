@@ -112,6 +112,11 @@ Health check:
 - `GET /api/responses/study/:studyId`
 - `GET /api/analytics/studies/:id/summary`
 
+Analytics summary query params (optional):
+- `from` and `to` (ISO date-time) for submission date filtering
+- `gender`
+- `location`
+
 ## Auth for Write Endpoints
 
 - Use OTP endpoints first to retrieve a bearer token.
