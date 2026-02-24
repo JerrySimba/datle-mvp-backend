@@ -97,6 +97,29 @@ Health check:
 - `npm run start` - run compiled server
 - `npm run test` - run minimal API integration tests
 
+## Dashboard Demo (Step 2-5)
+
+1. Open a second terminal and go to `dashboard/`.
+2. Install dashboard dependencies:
+
+```bash
+npm install
+```
+
+3. Create dashboard env file from example:
+
+```bash
+cp .env.example .env
+```
+
+4. Start dashboard:
+
+```bash
+npm run dev
+```
+
+Dashboard runs on `http://localhost:5173` and calls backend analytics endpoints.
+
 ## Core API routes
 
 - `POST /api/auth/request-otp`
