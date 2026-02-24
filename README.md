@@ -86,6 +86,7 @@ Health check:
 
 ## Environment
 
+- `CORS_ORIGIN`: allowed origins for browser clients (comma-separated supported).
 - `OTP_TTL_MINUTES`: OTP validity window in minutes.
 - `RATE_LIMIT_WINDOW_MS`: request limit window duration in milliseconds.
 - `RATE_LIMIT_MAX_REQUESTS`: max requests allowed per IP in each window.
@@ -96,6 +97,7 @@ Health check:
 - `npm run build` - compile TypeScript to `dist/`
 - `npm run start` - run compiled server
 - `npm run test` - run minimal API integration tests
+- `npm run test:dashboard:build` - frontend smoke test (dashboard build)
 
 ## Dashboard Demo (Step 2-5)
 
@@ -119,6 +121,11 @@ npm run dev
 ```
 
 Dashboard runs on `http://localhost:5173` and calls backend analytics endpoints.
+
+If dashboard cannot load data:
+1. Ensure backend is running on `http://localhost:4000`.
+2. Ensure backend `.env` has `CORS_ORIGIN="http://localhost:5173"`.
+3. Restart backend after changing env values.
 
 ## Core API routes
 
@@ -153,7 +160,3 @@ Analytics summary query params (optional):
 - OTP is currently a placeholder flow with console delivery for local MVP usage.
 - Validation logs are persisted through the `ValidationLog` Prisma model for future consistency and quality checks.
 - The schema uses PostgreSQL-compatible types and naming to stay ready for Supabase.
-
-## Notes
-
-- The Analytics should have a ready dashboard that can be tailored to #Precisely What the client wants and/or a full analytics dashboard that preceeds only decision making

@@ -1,6 +1,7 @@
 import cors from "cors";
 import express from "express";
 
+import { env } from "./config/env";
 import { rateLimiter } from "./middleware/rateLimiter";
 import { requestLogger } from "./middleware/requestLogger";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
@@ -12,7 +13,15 @@ import { responsesRouter } from "./modules/responses/responses.routes";
 
 const app = express();
 
-app.use(cors());
+const corsOrigins = env.CORS_ORIGIN.split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.use(
+  cors({
+    origin: corsOrigins
+  })
+);
 app.use(express.json());
 app.use(requestLogger);
 app.use(rateLimiter);

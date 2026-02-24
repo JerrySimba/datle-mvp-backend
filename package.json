@@ -9,6 +9,7 @@
         "build": "tsc",
         "start": "node dist/server.js",
         "test": "vitest run",
+        "test:dashboard:build": "cd dashboard && npm run build",
         "prisma:generate": "prisma generate",
         "prisma:migrate": "prisma migrate dev"
     },
