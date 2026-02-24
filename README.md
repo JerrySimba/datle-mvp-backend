@@ -98,6 +98,7 @@ Health check:
 - `npm run start` - run compiled server
 - `npm run test` - run minimal API integration tests
 - `npm run test:dashboard:build` - frontend smoke test (dashboard build)
+- `npm run test:respondent:build` - frontend smoke test (respondent app build)
 - `npm run demo:seed` - reset and seed a consistent demo study dataset
 
 ## Dashboard Demo (Step 2-5)
@@ -125,7 +126,7 @@ Dashboard runs on `http://localhost:5173` and calls backend analytics endpoints.
 
 If dashboard cannot load data:
 1. Ensure backend is running on `http://localhost:4000`.
-2. Ensure backend `.env` has `CORS_ORIGIN="http://localhost:5173"`.
+2. Ensure backend `.env` has `CORS_ORIGIN="http://localhost:5173,http://localhost:5174"`.
 3. Restart backend after changing env values.
 
 Generate predictable demo data:
@@ -133,6 +134,33 @@ Generate predictable demo data:
 ```bash
 npm run demo:seed
 ```
+
+## Respondent App (4-Step Flow)
+
+1. Open another terminal and go to `respondent-app/`.
+2. Install dependencies:
+
+```bash
+npm install
+```
+
+3. Create local env:
+
+```bash
+cp .env.example .env
+```
+
+4. Start app:
+
+```bash
+npm run dev
+```
+
+Respondent app runs on `http://localhost:5174` with:
+1. Email OTP request
+2. OTP verification
+3. Profile capture
+4. Study response submission
 
 ## Core API routes
 
