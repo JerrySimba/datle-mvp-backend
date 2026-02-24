@@ -37,8 +37,7 @@ export type Summary = {
   applied_filters: {
     from: string | null;
     to: string | null;
-    gender: string | null;
-    location: string | null;
+    dimensions: Record<string, string>;
   };
   respondent_breakdowns: {
     gender: BreakdownItem[];

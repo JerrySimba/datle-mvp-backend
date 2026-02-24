@@ -141,14 +141,15 @@ describe("DatLe API happy path", () => {
     );
 
     const filteredAnalyticsRes = await request(app).get(
-      `/api/analytics/studies/${studyRes.body.id}/summary?gender=female&location=Seattle%2C%20WA`
+      `/api/analytics/studies/${studyRes.body.id}/summary?gender=female&location=Seattle%2C%20WA&q_q1_preferred_brand=Brand%20A`
     );
 
     expect(filteredAnalyticsRes.status).toBe(200);
     expect(filteredAnalyticsRes.body.metrics.total_responses).toBe(1);
     expect(filteredAnalyticsRes.body.metrics.unique_respondents).toBe(1);
-    expect(filteredAnalyticsRes.body.applied_filters.gender).toBe("female");
-    expect(filteredAnalyticsRes.body.applied_filters.location).toBe("Seattle, WA");
+    expect(filteredAnalyticsRes.body.applied_filters.dimensions.gender).toBe("female");
+    expect(filteredAnalyticsRes.body.applied_filters.dimensions.location).toBe("Seattle, WA");
+    expect(filteredAnalyticsRes.body.applied_filters.dimensions.q_q1_preferred_brand).toBe("Brand A");
     expect(filteredAnalyticsRes.body.respondent_breakdowns.gender).toEqual([
       expect.objectContaining({ value: "female", count: 1 })
     ]);

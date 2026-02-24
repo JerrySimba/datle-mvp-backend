@@ -26,7 +26,7 @@ export const fetchStudies = async () => {
 
 export const fetchSummary = async (
   studyId: string,
-  filters: { from?: string; to?: string; gender?: string; location?: string }
+  filters: Record<string, string | undefined>
 ) => {
   const query = toQueryString(filters);
   const response = await fetch(`${API_BASE_URL}/api/analytics/studies/${studyId}/summary${query}`);

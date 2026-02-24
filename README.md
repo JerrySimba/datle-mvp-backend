@@ -144,8 +144,8 @@ If dashboard cannot load data:
 
 Analytics summary query params (optional):
 - `from` and `to` (ISO date-time) for submission date filtering
-- `gender`
-- `location`
+- respondent fields (when present): `gender`, `location`, `income_band`, `education`, `employment_status`, `age`
+- question payload filters: `q_<question_key>=<value>`
 
 ## Auth for Write Endpoints
 

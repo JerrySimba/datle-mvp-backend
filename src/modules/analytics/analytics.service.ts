@@ -21,8 +21,7 @@ export const analyticsService = {
     filters?: {
       from?: string;
       to?: string;
-      gender?: string;
-      location?: string;
+      dimensionFilters?: Record<string, string>;
     }
   ) {
     const study = await prisma.study.findUnique({ where: { id: studyId } });
@@ -30,6 +29,19 @@ export const analyticsService = {
     if (!study) {
       throw new AppError("Study not found", 404);
     }
+
+    const respondentFieldMap: Record<string, string> = {
+      gender: "gender",
+      location: "location",
+      income_band: "incomeBand",
+      education: "education",
+      employment_status: "employmentStatus",
+      age: "age"
+    };
+
+    const respondentFilterEntries = Object.entries(filters?.dimensionFilters || {}).filter(([key]) =>
+      Object.keys(respondentFieldMap).includes(key)
+    );
 
     const where: Prisma.ResponseWhereInput = {
       studyId,
@@ -41,12 +53,21 @@ export const analyticsService = {
             }
           }
         : {}),
-      ...(filters?.gender || filters?.location
+      ...(respondentFilterEntries.length > 0
         ? {
-            respondent: {
-              ...(filters?.gender ? { gender: filters.gender } : {}),
-              ...(filters?.location ? { location: filters.location } : {})
-            }
+            respondent: respondentFilterEntries.reduce<Record<string, string | number>>((acc, [key, value]) => {
+              const mapped = respondentFieldMap[key];
+              if (mapped === "age") {
+                const asNumber = Number(value);
+                if (!Number.isNaN(asNumber)) {
+                  acc[mapped] = asNumber;
+                }
+                return acc;
+              }
+
+              acc[mapped] = value;
+              return acc;
+            }, {})
           }
         : {})
     };
@@ -68,17 +89,46 @@ export const analyticsService = {
       orderBy: { submittedAt: "asc" }
     });
 
+    const payloadFilters = Object.entries(filters?.dimensionFilters || {}).filter(([key]) => key.startsWith("q_"));
+    const filteredResponses =
+      payloadFilters.length === 0
+        ? responses
+        : responses.filter((item) => {
+            if (!item.payload || typeof item.payload !== "object" || Array.isArray(item.payload)) {
+              return false;
+            }
+
+            const payload = item.payload as Record<string, unknown>;
+            return payloadFilters.every(([key, expected]) => {
+              const payloadKey = key.slice(2);
+              const actual = payload[payloadKey];
+
+              const normalized =
+                actual === null
+                  ? "null"
+                  : typeof actual === "string"
+                    ? actual
+                    : typeof actual === "number" || typeof actual === "boolean"
+                      ? String(actual)
+                      : actual === undefined
+                        ? ""
+                        : JSON.stringify(actual);
+
+              return normalized === expected;
+            });
+          });
+
     const trendMap = new Map<string, number>();
-    responses.forEach((response) => {
+    filteredResponses.forEach((response) => {
       const day = response.submittedAt.toISOString().slice(0, 10);
       trendMap.set(day, (trendMap.get(day) || 0) + 1);
     });
 
-    const totalResponses = responses.length;
-    const uniqueRespondents = new Set(responses.map((item) => item.respondentId)).size;
+    const totalResponses = filteredResponses.length;
+    const uniqueRespondents = new Set(filteredResponses.map((item) => item.respondentId)).size;
     const payloadValueCounts = new Map<string, Map<string, number>>();
 
-    responses.forEach((item) => {
+    filteredResponses.forEach((item) => {
       if (item.payload && typeof item.payload === "object" && !Array.isArray(item.payload)) {
         const payload = item.payload as Record<string, unknown>;
         Object.entries(payload).forEach(([key, value]) => {
@@ -131,16 +181,15 @@ export const analyticsService = {
       applied_filters: {
         from: filters?.from || null,
         to: filters?.to || null,
-        gender: filters?.gender || null,
-        location: filters?.location || null
+        dimensions: filters?.dimensionFilters || {}
       },
       respondent_breakdowns: {
-        gender: countBy(responses.map((item) => item.respondent.gender)),
-        location: countBy(responses.map((item) => item.respondent.location)),
-        income_band: countBy(responses.map((item) => item.respondent.incomeBand)),
-        education: countBy(responses.map((item) => item.respondent.education)),
-        employment_status: countBy(responses.map((item) => item.respondent.employmentStatus)),
-        age: countBy(responses.map((item) => item.respondent.age))
+        gender: countBy(filteredResponses.map((item) => item.respondent.gender)),
+        location: countBy(filteredResponses.map((item) => item.respondent.location)),
+        income_band: countBy(filteredResponses.map((item) => item.respondent.incomeBand)),
+        education: countBy(filteredResponses.map((item) => item.respondent.education)),
+        employment_status: countBy(filteredResponses.map((item) => item.respondent.employmentStatus)),
+        age: countBy(filteredResponses.map((item) => item.respondent.age))
       },
       question_stats: questionStats
     };
