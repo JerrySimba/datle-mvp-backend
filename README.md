@@ -87,6 +87,11 @@ Health check:
 ## Environment
 
 - `CORS_ORIGIN`: allowed origins for browser clients (comma-separated supported).
+- `OTP_EMAIL_PROVIDER`: `auto`, `console`, or `resend`.
+- `RESEND_API_KEY`: required when using Resend.
+- `RESEND_FROM_EMAIL`: sender identity for OTP emails.
+- `RESEND_REPLY_TO`: optional support reply address.
+- `OTP_EMAIL_SUBJECT`: OTP email subject line.
 - `OTP_TTL_MINUTES`: OTP validity window in minutes.
 - `RATE_LIMIT_WINDOW_MS`: request limit window duration in milliseconds.
 - `RATE_LIMIT_MAX_REQUESTS`: max requests allowed per IP in each window.
@@ -192,6 +197,6 @@ Analytics summary query params (optional):
 
 ## Notes
 
-- OTP is currently a placeholder flow with console delivery for local MVP usage.
+- OTP can send through Resend when configured; otherwise it uses console fallback in `auto` mode.
 - Validation logs are persisted through the `ValidationLog` Prisma model for future consistency and quality checks.
 - The schema uses PostgreSQL-compatible types and naming to stay ready for Supabase.

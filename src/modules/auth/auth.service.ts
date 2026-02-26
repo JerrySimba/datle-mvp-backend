@@ -1,6 +1,7 @@
 import { AppError } from "../../middleware/errorHandler";
 import { env } from "../../config/env";
 import { tokenService } from "../../services/token";
+import { emailService } from "../../services/email";
 
 type OtpRecord = {
   otp: string;
@@ -10,16 +11,25 @@ type OtpRecord = {
 class OtpService {
   private store = new Map<string, OtpRecord>();
 
-  requestOtp(email: string) {
+  async requestOtp(email: string) {
     const otp = (Math.floor(100000 + Math.random() * 900000)).toString();
     const expiresAt = Date.now() + env.OTP_TTL_MINUTES * 60 * 1000;
+    const normalizedEmail = email.toLowerCase();
 
-    this.store.set(email.toLowerCase(), { otp, expiresAt });
+    this.store.set(normalizedEmail, { otp, expiresAt });
 
-    // Placeholder sender for MVP until external provider integration.
-    console.log(`[OTP] ${email}: ${otp}`);
+    try {
+      const delivery = await emailService.sendOtp(normalizedEmail, otp);
 
-    return { message: "OTP generated", expiresInMinutes: env.OTP_TTL_MINUTES };
+      return {
+        message: "OTP generated",
+        expiresInMinutes: env.OTP_TTL_MINUTES,
+        delivery: delivery.provider
+      };
+    } catch (error) {
+      this.store.delete(normalizedEmail);
+      throw new AppError("Failed to send OTP email", 500);
+    }
   }
 
   verifyOtp(email: string, otp: string) {

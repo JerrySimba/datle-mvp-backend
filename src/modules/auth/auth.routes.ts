@@ -6,14 +6,22 @@ import { validateBody } from "../../utils/validate";
 
 export const authRouter = Router();
 
-authRouter.post("/request-otp", (req, res) => {
-  const data = validateBody(requestOtpSchema, req.body);
-  const result = otpService.requestOtp(data.email);
-  res.status(200).json(result);
+authRouter.post("/request-otp", async (req, res, next) => {
+  try {
+    const data = validateBody(requestOtpSchema, req.body);
+    const result = await otpService.requestOtp(data.email);
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
 });
 
-authRouter.post("/verify-otp", (req, res) => {
-  const data = validateBody(verifyOtpSchema, req.body);
-  const result = otpService.verifyOtp(data.email, data.otp);
-  res.status(200).json(result);
+authRouter.post("/verify-otp", (req, res, next) => {
+  try {
+    const data = validateBody(verifyOtpSchema, req.body);
+    const result = otpService.verifyOtp(data.email, data.otp);
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
 });
