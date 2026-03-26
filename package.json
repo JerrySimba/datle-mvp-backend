@@ -8,12 +8,17 @@
         "dev": "tsx watch src/server.ts",
         "build": "tsc",
         "start": "node dist/server.js",
-        "test": "vitest run",
+        "test": "vitest run --pool=threads",
+        "test:db:reset": "tsx src/scripts/resetTestDb.ts",
+        "test:fresh": "npm run test:db:reset && npm test",
         "test:dashboard:build": "cd dashboard && npm run build",
         "test:respondent:build": "cd respondent-app && npm run build",
         "demo:seed": "tsx src/scripts/demoSeed.ts",
+        "study:create:cocacola": "tsx src/scripts/createCocaColaStudy.ts",
         "prisma:generate": "prisma generate",
-        "prisma:migrate": "prisma migrate dev"
+        "prisma:migrate": "prisma migrate dev",
+        "prisma:migrate:deploy": "prisma migrate deploy",
+        "verify:build": "npm run build && npm run test:dashboard:build && npm run test:respondent:build"
     },
     "dependencies": {
         "@prisma/client": "^5.21.1",

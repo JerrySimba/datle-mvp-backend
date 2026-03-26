@@ -1,10 +1,12 @@
 import { z } from "zod";
 
+const studyStatusSchema = z.enum(["DRAFT", "ACTIVE", "PAUSED", "COMPLETED", "ARCHIVED"]);
+
 export const createStudySchema = z
   .object({
     title: z.string().min(1),
     target_criteria: z.record(z.any()),
-    status: z.enum(["DRAFT", "ACTIVE", "PAUSED", "COMPLETED", "ARCHIVED"]).default("DRAFT"),
+    status: studyStatusSchema.default("DRAFT"),
     created_by: z.string().min(1),
     start_date: z.string().datetime().optional(),
     end_date: z.string().datetime().optional()
@@ -22,3 +24,7 @@ export const createStudySchema = z
       path: ["start_date"]
     }
   );
+
+export const updateStudyStatusSchema = z.object({
+  status: studyStatusSchema
+});

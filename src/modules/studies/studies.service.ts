@@ -8,6 +8,7 @@ type CreateStudyInput = {
   target_criteria: Prisma.InputJsonValue;
   status: "DRAFT" | "ACTIVE" | "PAUSED" | "COMPLETED" | "ARCHIVED";
   created_by: string;
+  company_id?: string;
   start_date?: string;
   end_date?: string;
 };
@@ -20,6 +21,7 @@ export const studiesService = {
         targetCriteria: data.target_criteria,
         status: data.status,
         createdBy: data.created_by,
+        companyId: data.company_id || null,
         startDate: data.start_date ? new Date(data.start_date) : null,
         endDate: data.end_date ? new Date(data.end_date) : null
       }
@@ -32,11 +34,55 @@ export const studiesService = {
     });
   },
 
+  async updateStatus(
+    id: string,
+    status: "DRAFT" | "ACTIVE" | "PAUSED" | "COMPLETED" | "ARCHIVED",
+    account: { email: string; role?: string; companyId?: string }
+  ) {
+    await this.assertAccountAccess(id, account);
+
+    return prisma.study.update({
+      where: { id },
+      data: { status }
+    });
+  },
+
+  async listForAccount(account: { email: string; role?: string; companyId?: string }) {
+    return prisma.study.findMany({
+      where:
+        account.role === "ADMIN"
+          ? undefined
+          : account.companyId
+            ? {
+                OR: [{ companyId: account.companyId }, { companyId: null, createdBy: account.email }]
+              }
+            : { createdBy: account.email },
+      orderBy: { createdAt: "desc" }
+    });
+  },
+
   async getById(id: string) {
     const study = await prisma.study.findUnique({ where: { id } });
 
     if (!study) {
       throw new AppError("Study not found", 404);
+    }
+
+    return study;
+  },
+
+  async assertAccountAccess(id: string, account: { email: string; role?: string; companyId?: string }) {
+    const study = await prisma.study.findUnique({ where: { id } });
+
+    if (!study) {
+      throw new AppError("Study not found", 404);
+    }
+
+    const hasCompanyAccess = !!account.companyId && study.companyId === account.companyId;
+    const hasLegacyAccess = !study.companyId && study.createdBy === account.email;
+
+    if (account.role !== "ADMIN" && !hasCompanyAccess && !hasLegacyAccess) {
+      throw new AppError("Forbidden", 403);
     }
 
     return study;

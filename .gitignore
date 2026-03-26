@@ -1,9 +1,12 @@
 node_modules/
 dist/
 .env
+.env.test
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 coverage/
 study-responses.csv
 *.export.csv
+.npm-cache/
+.pilot-backend*.log

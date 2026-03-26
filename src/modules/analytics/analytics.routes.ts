@@ -1,11 +1,13 @@
 import { Router } from "express";
 
+import { AuthenticatedRequest, requireAuth, requireRoles } from "../../middleware/auth";
 import { analyticsService } from "./analytics.service";
 
 export const analyticsRouter = Router();
 
-analyticsRouter.get("/studies/:id/summary", async (req, res, next) => {
+analyticsRouter.get("/studies/:id/summary", requireAuth, requireRoles("BUSINESS", "ADMIN"), async (req, res, next) => {
   try {
+    const auth = (req as AuthenticatedRequest).auth;
     const from = typeof req.query.from === "string" ? req.query.from : undefined;
     const to = typeof req.query.to === "string" ? req.query.to : undefined;
     const dimensionFilters = Object.entries(req.query).reduce<Record<string, string>>((acc, [key, value]) => {
@@ -24,6 +26,10 @@ analyticsRouter.get("/studies/:id/summary", async (req, res, next) => {
       from,
       to,
       dimensionFilters
+    }, {
+      email: auth?.email || "",
+      role: auth?.role,
+      companyId: auth?.companyId
     });
 
     res.status(200).json(summary);

@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../services/prisma";
 import { AppError } from "../../middleware/errorHandler";
+import { describeQuota, getStudyQuotaRules, quotaTargetCount, respondentMatchesQuota } from "../../utils/studyMatching";
 
 const countBy = <T>(items: T[]) => {
   const counts = new Map<string, number>();
@@ -22,12 +23,24 @@ export const analyticsService = {
       from?: string;
       to?: string;
       dimensionFilters?: Record<string, string>;
+    },
+    account?: {
+      email: string;
+      role?: string;
+      companyId?: string;
     }
   ) {
     const study = await prisma.study.findUnique({ where: { id: studyId } });
 
     if (!study) {
       throw new AppError("Study not found", 404);
+    }
+
+    const hasCompanyAccess = !!account?.companyId && study.companyId === account.companyId;
+    const hasLegacyAccess = !!account && !study.companyId && study.createdBy === account.email;
+
+    if (account && account.role !== "ADMIN" && !hasCompanyAccess && !hasLegacyAccess) {
+      throw new AppError("Forbidden", 403);
     }
 
     const respondentFieldMap: Record<string, string> = {
@@ -162,6 +175,36 @@ export const analyticsService = {
       })
       .sort((a, b) => a.question.localeCompare(b.question));
 
+    const quotaProgress = getStudyQuotaRules(study.targetCriteria)
+      .map((quota, index) => {
+        const target = quotaTargetCount(quota);
+        if (target === null) {
+          return null;
+        }
+
+        const current = filteredResponses.filter((response) =>
+          respondentMatchesQuota(
+            {
+              age: response.respondent.age,
+              gender: response.respondent.gender,
+              location: response.respondent.location,
+              incomeBand: response.respondent.incomeBand
+            },
+            quota
+          )
+        ).length;
+
+        return {
+          id: quota.id || `quota-${index + 1}`,
+          label: describeQuota(quota, index),
+          target_count: target,
+          current_count: current,
+          remaining: Math.max(target - current, 0),
+          filled: current >= target
+        };
+      })
+      .filter(Boolean);
+
     return {
       study: {
         id: study.id,
@@ -175,6 +218,7 @@ export const analyticsService = {
         total_responses: totalResponses,
         unique_respondents: uniqueRespondents
       },
+      quota_progress: quotaProgress,
       trends: {
         responses_by_day: Array.from(trendMap.entries()).map(([date, count]) => ({ date, count }))
       },

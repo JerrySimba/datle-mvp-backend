@@ -1,9 +1,9 @@
 import { Router } from "express";
 
 import { validateBody } from "../../utils/validate";
-import { createStudySchema } from "./studies.schema";
+import { createStudySchema, updateStudyStatusSchema } from "./studies.schema";
 import { studiesService } from "./studies.service";
-import { requireAuth } from "../../middleware/auth";
+import { AuthenticatedRequest, requireAuth, requireRoles } from "../../middleware/auth";
 
 export const studiesRouter = Router();
 
@@ -31,11 +31,30 @@ const slugify = (value: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-studiesRouter.post("/", requireAuth, async (req, res, next) => {
+studiesRouter.post("/", requireAuth, requireRoles("BUSINESS", "ADMIN"), async (req, res, next) => {
   try {
     const data = validateBody(createStudySchema, req.body);
-    const study = await studiesService.create(data);
+    const auth = (req as AuthenticatedRequest).auth;
+    const study = await studiesService.create({
+      ...data,
+      created_by: auth?.email || data.created_by,
+      company_id: auth?.companyId
+    });
     res.status(201).json(study);
+  } catch (error) {
+    next(error);
+  }
+});
+
+studiesRouter.get("/mine", requireAuth, requireRoles("BUSINESS", "ADMIN"), async (req, res, next) => {
+  try {
+    const auth = (req as AuthenticatedRequest).auth;
+    const studies = await studiesService.listForAccount({
+      email: auth?.email || "",
+      role: auth?.role,
+      companyId: auth?.companyId
+    });
+    res.status(200).json(studies);
   } catch (error) {
     next(error);
   }
@@ -50,8 +69,29 @@ studiesRouter.get("/", async (_req, res, next) => {
   }
 });
 
-studiesRouter.get("/:id/responses", async (req, res, next) => {
+studiesRouter.patch("/:id/status", requireAuth, requireRoles("BUSINESS", "ADMIN"), async (req, res, next) => {
   try {
+    const auth = (req as AuthenticatedRequest).auth;
+    const data = validateBody(updateStudyStatusSchema, req.body);
+    const study = await studiesService.updateStatus(req.params.id, data.status, {
+      email: auth?.email || "",
+      role: auth?.role,
+      companyId: auth?.companyId
+    });
+    res.status(200).json(study);
+  } catch (error) {
+    next(error);
+  }
+});
+
+studiesRouter.get("/:id/responses", requireAuth, requireRoles("BUSINESS", "ADMIN"), async (req, res, next) => {
+  try {
+    const auth = (req as AuthenticatedRequest).auth;
+    await studiesService.assertAccountAccess(req.params.id, {
+      email: auth?.email || "",
+      role: auth?.role,
+      companyId: auth?.companyId
+    });
     const exportPayload = await studiesService.getResponsesExport(req.params.id);
     res.status(200).json(exportPayload);
   } catch (error) {
@@ -59,8 +99,14 @@ studiesRouter.get("/:id/responses", async (req, res, next) => {
   }
 });
 
-studiesRouter.get("/:id/responses.csv", async (req, res, next) => {
+studiesRouter.get("/:id/responses.csv", requireAuth, requireRoles("BUSINESS", "ADMIN"), async (req, res, next) => {
   try {
+    const auth = (req as AuthenticatedRequest).auth;
+    await studiesService.assertAccountAccess(req.params.id, {
+      email: auth?.email || "",
+      role: auth?.role,
+      companyId: auth?.companyId
+    });
     const exportPayload = await studiesService.getResponsesExport(req.params.id);
     const payloadKeys = Array.from(
       new Set(

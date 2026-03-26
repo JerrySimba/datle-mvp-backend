@@ -58,21 +58,105 @@ npm run prisma:generate
 npm run prisma:migrate -- --name init
 ```
 
+## Test Database Isolation
+
+Keep tests on a separate PostgreSQL database so they do not pollute the local demo or pilot dataset.
+
+1. Create `.env.test` from `.env.test.example`
+2. Point it to a dedicated test database, for example:
+
+```bash
+DATABASE_URL="postgresql://postgres:your_password@localhost:5432/datle_mvp_test?schema=public"
+SHADOW_DATABASE_URL="postgresql://postgres:your_password@localhost:5432/datle_mvp_test_shadow?schema=public"
+```
+
+3. Run Prisma migrations against the test database before `npm test`
+
+Vitest now loads `.env.test` automatically, while normal development continues to use `.env`.
+
+Useful commands:
+
+```bash
+npm run test:db:reset
+npm run test:fresh
+```
+
+- `test:db:reset` clears only the isolated test database records
+- `test:fresh` resets the test database and then runs the backend test suite
+
+### Windows PowerShell: Fix `npm` Command Resolution
+
+If `npm`/`node` are installed but PowerShell cannot find them (or blocks `npm.ps1`), run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\fix-powershell-node.ps1
+```
+
+Then close and reopen your terminal.
+
 ## Production Setup
 
 1. Copy `.env.production.example` to your deployment platform's environment variable settings.
 2. Set secure production values for:
    - `DATABASE_URL`
    - `JWT_SECRET`
+   - `RESEND_API_KEY` and `RESEND_FROM_EMAIL` when `OTP_EMAIL_PROVIDER="resend"`
 3. Keep rate limit values unless you need stricter throughput controls:
    - `RATE_LIMIT_WINDOW_MS`
    - `RATE_LIMIT_MAX_REQUESTS`
-4. Build and run:
+4. Create frontend production env files:
 
 ```bash
+dashboard/.env.production
+respondent-app/.env.production
+```
+
+with:
+
+```bash
+VITE_API_BASE_URL=https://your-api-domain.com
+```
+
+5. Build and run:
+
+```bash
+npm run prisma:migrate:deploy
 npm run build
 npm run start
 ```
+
+6. Build frontends:
+
+```bash
+cd dashboard && npm run build
+cd ../respondent-app && npm run build
+```
+
+## Deployment Order
+
+1. Provision production PostgreSQL.
+2. Set backend environment variables.
+3. Run `npm install`.
+4. Run `npm run prisma:migrate:deploy`.
+5. Run `npm run build`.
+6. Start backend with `npm run start`.
+7. Build and deploy `dashboard/` with `VITE_API_BASE_URL` pointing to backend.
+8. Build and deploy `respondent-app/` with `VITE_API_BASE_URL` pointing to backend.
+9. Confirm `GET /health` works from the deployed backend.
+
+## Pilot Readiness Checks
+
+Run these after deployment:
+
+1. `GET /health`
+2. Business registration and login
+3. Study creation from dashboard
+4. Respondent registration with OTP
+5. Profile save
+6. Eligible study appears in respondent account
+7. Response submission updates analytics
+8. Quota fill blocks the next matching respondent
+9. CSV/JSON export succeeds
 
 ## Run
 
@@ -93,6 +177,9 @@ Health check:
 - `RESEND_REPLY_TO`: optional support reply address.
 - `OTP_EMAIL_SUBJECT`: OTP email subject line.
 - `OTP_TTL_MINUTES`: OTP validity window in minutes.
+- `AUTH_TOKEN_TTL_MINUTES`: bearer token lifetime in minutes.
+- `AUTH_MAX_ATTEMPTS`: max failed auth attempts before temporary lock.
+- `AUTH_LOCK_MINUTES`: lock duration after exceeding auth attempts.
 - `RATE_LIMIT_WINDOW_MS`: request limit window duration in milliseconds.
 - `RATE_LIMIT_MAX_REQUESTS`: max requests allowed per IP in each window.
 
@@ -140,6 +227,42 @@ Generate predictable demo data:
 npm run demo:seed
 ```
 
+## Pilot Demo Dataset
+
+Running `npm run demo:seed` resets and recreates a consistent pilot dataset with:
+
+- 1 demo company
+- 1 admin account
+- 1 business account
+- 6 respondent accounts with saved profiles
+- 1 active study with quotas and partial completions
+- 1 completed study with historical responses
+
+Seeded credentials:
+
+- Admin: `demo-seed-admin@datle.com` / `DemoPass123!`
+- Business: `demo-seed-business@datle.com` / `DemoPass123!`
+- Respondents:
+  - `demo-seed-respondent-1@datle.com` / `DemoPass123!`
+  - `demo-seed-respondent-2@datle.com` / `DemoPass123!`
+  - `demo-seed-respondent-3@datle.com` / `DemoPass123!`
+  - `demo-seed-respondent-4@datle.com` / `DemoPass123!`
+  - `demo-seed-respondent-5@datle.com` / `DemoPass123!`
+  - `demo-seed-respondent-6@datle.com` / `DemoPass123!`
+
+Seeded studies:
+
+- Active: `Demo Urban Soft Drink Pulse`
+- Completed: `Demo Pack Format Recall`
+
+Suggested pilot walkthrough:
+
+1. Sign into the dashboard with the demo business account.
+2. Review the active and completed studies plus analytics and quota progress.
+3. Sign into the respondent app with one of the demo respondent accounts.
+4. Confirm the respondent sees only matched studies and clear availability states.
+5. Submit a response with an uncompleted respondent account and refresh business analytics.
+
 ## Respondent App (4-Step Flow)
 
 1. Open another terminal and go to `respondent-app/`.
@@ -162,16 +285,20 @@ npm run dev
 ```
 
 Respondent app runs on `http://localhost:5174` with:
-1. Email OTP request
-2. OTP verification
-3. Profile capture
+1. Account register/login (email + ID number + password)
+2. OTP verification on registration
+3. Profile capture (auto-skipped when already saved)
 4. Study response submission
 
 ## Core API routes
 
 - `POST /api/auth/request-otp`
 - `POST /api/auth/verify-otp`
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `POST /api/auth/logout`
 - `POST /api/respondents`
+- `GET /api/respondents/me`
 - `GET /api/respondents/:id`
 - `POST /api/studies`
 - `GET /api/studies`
@@ -189,7 +316,16 @@ Analytics summary query params (optional):
 
 ## Auth for Write Endpoints
 
-- Use OTP endpoints first to retrieve a bearer token.
+- Use account auth for respondent/session actions.
+- Account auth is also available:
+  - `POST /api/auth/request-otp` with `email`
+  - `POST /api/auth/register` with `email`, `id_number`, `password`, `otp`
+  - `POST /api/auth/login` with `identifier` (email or ID number) and `password`
+  - `POST /api/auth/logout` (server revokes account session tokens)
+- `POST /api/respondents` now requires an account-auth token (`/register` or `/login`) and
+  the profile `email` must match the authenticated account email.
+- `POST /api/responses` enforces respondent ownership: response `respondent_id` must belong to the authenticated account.
+- `POST /api/studies` is restricted to account roles `BUSINESS` or `ADMIN`.
 - Send `Authorization: Bearer <token>` on write routes:
   - `POST /api/respondents`
   - `POST /api/studies`

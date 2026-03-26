@@ -22,8 +22,15 @@ enum ValidationStatus {
   WARNING
 }
 
+enum AccountRole {
+  USER
+  BUSINESS
+  ADMIN
+}
+
 model Respondent {
   id               String          @id @default(cuid())
+  accountId        String?         @unique @map("account_id")
   email            String          @unique
   age              Int
   gender           String
@@ -33,13 +40,54 @@ model Respondent {
   employmentStatus String          @map("employment_status")
   createdAt        DateTime        @default(now()) @map("created_at")
   updatedAt        DateTime        @updatedAt @map("updated_at")
+  account          Account?        @relation(fields: [accountId], references: [id], onDelete: SetNull)
   responses        Response[]
 
   @@map("respondents")
 }
 
+model Account {
+  id             String       @id @default(cuid())
+  companyId      String?      @map("company_id")
+  email          String       @unique
+  idNumber       String       @unique @map("id_number")
+  passwordHash   String       @map("password_hash")
+  role           AccountRole  @default(USER)
+  sessionVersion Int          @default(1) @map("session_version")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  company        Company?     @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  respondent     Respondent?
+
+  @@map("accounts")
+}
+
+model Company {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  slug      String    @unique
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  accounts  Account[]
+  studies   Study[]
+
+  @@map("companies")
+}
+
+model AuthOtpCode {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  codeHash  String   @map("code_hash")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("auth_otp_codes")
+}
+
 model Study {
   id             String      @id @default(cuid())
+  companyId      String?     @map("company_id")
   title          String
   targetCriteria Json        @map("target_criteria")
   status         StudyStatus @default(DRAFT)
@@ -48,6 +96,7 @@ model Study {
   endDate        DateTime?   @map("end_date")
   createdAt      DateTime    @default(now()) @map("created_at")
   updatedAt      DateTime    @updatedAt @map("updated_at")
+  company        Company?    @relation(fields: [companyId], references: [id], onDelete: SetNull)
   responses      Response[]
 
   @@map("studies")

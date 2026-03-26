@@ -2,9 +2,14 @@ import crypto from "crypto";
 
 import { env } from "../config/env";
 
-type AuthTokenPayload = {
+export type AuthTokenPayload = {
   email: string;
   iat: number;
+  exp: number;
+  accountId?: string;
+  companyId?: string;
+  sessionVersion?: number;
+  role?: "USER" | "BUSINESS" | "ADMIN";
 };
 
 const encode = (value: string) => Buffer.from(value).toString("base64url");
@@ -40,6 +45,22 @@ export const tokenService = {
       if (!payload.email || !payload.iat) {
         return null;
       }
+
+      if (!payload.exp || typeof payload.exp !== "number" || Date.now() > payload.exp) {
+        return null;
+      }
+
+      if (payload.accountId !== undefined && typeof payload.accountId !== "string") {
+        return null;
+      }
+
+      if (payload.sessionVersion !== undefined && typeof payload.sessionVersion !== "number") {
+        return null;
+      }
+
+    if (payload.role !== undefined && !["USER", "BUSINESS", "ADMIN"].includes(payload.role)) {
+      return null;
+    }
 
       return payload;
     } catch {
