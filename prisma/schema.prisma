@@ -28,6 +28,11 @@ enum AccountRole {
   ADMIN
 }
 
+enum OtpContactType {
+  EMAIL
+  PHONE
+}
+
 model Respondent {
   id               String          @id @default(cuid())
   accountId        String?         @unique @map("account_id")
@@ -50,6 +55,7 @@ model Account {
   id             String       @id @default(cuid())
   companyId      String?      @map("company_id")
   email          String       @unique
+  phoneNumber    String?      @unique @map("phone_number")
   idNumber       String       @unique @map("id_number")
   passwordHash   String       @map("password_hash")
   role           AccountRole  @default(USER)
@@ -76,7 +82,8 @@ model Company {
 
 model AuthOtpCode {
   id        String   @id @default(cuid())
-  email     String   @unique
+  contactType OtpContactType @default(EMAIL) @map("contact_type")
+  contactValue String   @unique @map("contact_value")
   codeHash  String   @map("code_hash")
   expiresAt DateTime @map("expires_at")
   createdAt DateTime @default(now()) @map("created_at")

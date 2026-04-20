@@ -17,6 +17,31 @@ describe("DatLe API happy path", () => {
     return registerRes;
   };
 
+  const registerWithPhoneOtp = async (
+    email: string,
+    phoneNumber: string,
+    idNumber: string,
+    password = "SecurePass123"
+  ) => {
+    const otpRequestRes = await request(app).post("/api/auth/request-otp").send({ phone_number: phoneNumber });
+    expect(otpRequestRes.status).toBe(200);
+    expect(otpRequestRes.body.contact_type).toBe("phone");
+
+    const otp = otpRequestRes.body.test_otp || "123456";
+    const registerRes = await request(app)
+      .post("/api/auth/register")
+      .send({
+        email,
+        phone_number: phoneNumber,
+        otp_channel: "phone",
+        id_number: idNumber,
+        password,
+        otp
+      });
+
+    return registerRes;
+  };
+
   it("returns health status", async () => {
     const response = await request(app).get("/health");
 
@@ -72,6 +97,33 @@ describe("DatLe API happy path", () => {
         employment_status: "full_time"
       });
     expect(postLogoutRes.status).toBe(401);
+  });
+
+  it("registers an account with phone OTP and saves the phone number", async () => {
+    const unique = Date.now().toString();
+    const email = `phone-${unique}@datle.com`;
+    const phoneNumber = `+2547${unique.slice(-8)}`;
+    const idNumber = `ID-PHONE-${unique}`;
+
+    const registerRes = await registerWithPhoneOtp(email, phoneNumber, idNumber);
+
+    expect(registerRes.status).toBe(201);
+    expect(registerRes.body.account.email).toBe(email);
+    expect(registerRes.body.account.phone_number).toBe(phoneNumber);
+    expect(registerRes.body.account.id_number).toBe(idNumber);
+
+    const loginRes = await request(app)
+      .post("/api/auth/login")
+      .send({ identifier: idNumber, password: "SecurePass123" });
+
+    expect(loginRes.status).toBe(200);
+    expect(loginRes.body.account.phone_number).toBe(phoneNumber);
+
+    const savedAccount = await prisma.account.findUnique({
+      where: { email }
+    });
+
+    expect(savedAccount?.phoneNumber).toBe(phoneNumber);
   });
 
   it("allows admin to promote a business account to business role", async () => {
@@ -384,6 +436,49 @@ describe("DatLe API happy path", () => {
     });
 
     expect(validationLog).not.toBeNull();
+  });
+
+  it("returns a helpful error when AI insights are not configured", async () => {
+    const unique = Date.now().toString();
+    const businessEmail = `insights-biz-${unique}@datle.com`;
+
+    const registerRes = await registerWithOtp(businessEmail, `ID-INSIGHTS-${unique}`);
+    expect(registerRes.status).toBe(201);
+
+    await prisma.account.update({
+      where: { id: registerRes.body.account.id },
+      data: { role: "BUSINESS" }
+    });
+
+    const loginRes = await request(app)
+      .post("/api/auth/login")
+      .send({ identifier: businessEmail, password: "SecurePass123" });
+
+    expect(loginRes.status).toBe(200);
+
+    const studyRes = await request(app)
+      .post("/api/studies")
+      .set({ Authorization: `Bearer ${loginRes.body.token}` })
+      .send({
+        title: `AI Insights Study ${unique}`,
+        status: "ACTIVE",
+        created_by: "ignored-by-backend",
+        target_criteria: {
+          audience: {
+            locations: ["Nairobi"]
+          }
+        }
+      });
+
+    expect(studyRes.status).toBe(201);
+
+    const insightsRes = await request(app)
+      .post(`/api/analytics/studies/${studyRes.body.id}/insights`)
+      .set({ Authorization: `Bearer ${loginRes.body.token}` })
+      .send({});
+
+    expect(insightsRes.status).toBe(503);
+    expect(insightsRes.body.message).toContain("OPENAI_API_KEY");
   });
 
   it("blocks business users from accessing another business study analytics", async () => {

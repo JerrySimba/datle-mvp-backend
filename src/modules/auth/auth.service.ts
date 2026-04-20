@@ -23,6 +23,7 @@ const windowMs = lockDurationMs;
 const tokenTtlMs = () => env.AUTH_TOKEN_TTL_MINUTES * 60 * 1000;
 
 const normalizeIdNumber = (idNumber: string) => idNumber.trim().toUpperCase();
+const normalizePhoneNumber = (phoneNumber: string) => phoneNumber.trim().replace(/\s+/g, "");
 const hashOtp = (otp: string) => crypto.createHash("sha256").update(otp).digest("hex");
 
 const getAttemptKey = (action: string, identity: string, ip: string) =>
@@ -118,62 +119,97 @@ const writeAuthAudit = async (params: {
 };
 
 class OtpService {
-  async requestOtp(email: string, ip: string) {
-    const normalizedEmail = email.toLowerCase();
-    const attemptKey = getAttemptKey("request_otp", normalizedEmail, ip);
+  private resolveContact(input: { email?: string; phone_number?: string }) {
+    if (input.email) {
+      return {
+        contactType: "EMAIL" as const,
+        contactValue: input.email.trim().toLowerCase()
+      };
+    }
+
+    if (input.phone_number) {
+      return {
+        contactType: "PHONE" as const,
+        contactValue: normalizePhoneNumber(input.phone_number)
+      };
+    }
+
+    throw new AppError("Provide either an email or a phone number", 422);
+  }
+
+  async requestOtp(input: { email?: string; phone_number?: string }, ip: string) {
+    const contact = this.resolveContact(input);
+    const attemptKey = getAttemptKey("request_otp", contact.contactValue, ip);
     consumeOtpRequestQuota(attemptKey);
 
     const otp = env.NODE_ENV === "test" ? "123456" : (Math.floor(100000 + Math.random() * 900000)).toString();
     const expiresAt = new Date(now() + env.OTP_TTL_MINUTES * 60 * 1000);
 
     await prisma.authOtpCode.upsert({
-      where: { email: normalizedEmail },
+      where: { contactValue: contact.contactValue },
       create: {
-        email: normalizedEmail,
+        contactType: contact.contactType,
+        contactValue: contact.contactValue,
         codeHash: hashOtp(otp),
         expiresAt
       },
       update: {
+        contactType: contact.contactType,
         codeHash: hashOtp(otp),
         expiresAt
       }
     });
 
     try {
-      const delivery = await emailService.sendOtp(normalizedEmail, otp);
+      const delivery =
+        contact.contactType === "EMAIL"
+          ? await emailService.sendOtp(contact.contactValue, otp)
+          : await emailService.sendPhoneOtp(contact.contactValue, otp);
       await writeAuthAudit({
         action: "request_otp",
         status: "PASS",
-        email: normalizedEmail,
+        email: contact.contactType === "EMAIL" ? contact.contactValue : undefined,
         ip,
-        details: { delivery: delivery.provider }
+        details: {
+          delivery: delivery.provider,
+          contact_type: contact.contactType,
+          contact_value: contact.contactValue
+        }
       });
 
       return {
         message: "OTP generated",
         expiresInMinutes: env.OTP_TTL_MINUTES,
         delivery: delivery.provider,
+        contact_type: contact.contactType.toLowerCase(),
         ...(env.NODE_ENV === "test" ? { test_otp: otp } : {})
       };
     } catch (error) {
       await writeAuthAudit({
         action: "request_otp",
         status: "FAIL",
-        email: normalizedEmail,
+        email: contact.contactType === "EMAIL" ? contact.contactValue : undefined,
         ip,
-        details: { reason: "email_delivery_failed" }
+        details: {
+          reason: `${contact.contactType === "EMAIL" ? "email" : "phone"}_delivery_failed`,
+          contact_type: contact.contactType,
+          contact_value: contact.contactValue
+        }
       });
-      throw new AppError("Failed to send OTP email", 500);
+      throw new AppError(
+        contact.contactType === "EMAIL" ? "Failed to send OTP email" : "Failed to send OTP to phone",
+        500
+      );
     }
   }
 
-  private async consumeOtp(email: string, otp: string, ip: string) {
-    const normalizedEmail = email.toLowerCase();
-    const attemptKey = getAttemptKey("verify_otp", normalizedEmail, ip);
+  private async consumeOtp(input: { email?: string; phone_number?: string }, otp: string, ip: string) {
+    const contact = this.resolveContact(input);
+    const attemptKey = getAttemptKey("verify_otp", contact.contactValue, ip);
     assertNotLocked(attemptKey);
 
     const record = await prisma.authOtpCode.findUnique({
-      where: { email: normalizedEmail }
+      where: { contactValue: contact.contactValue }
     });
 
     if (!record) {
@@ -181,22 +217,22 @@ class OtpService {
       await writeAuthAudit({
         action: "verify_otp",
         status: "FAIL",
-        email: normalizedEmail,
+        email: contact.contactType === "EMAIL" ? contact.contactValue : undefined,
         ip,
-        details: { reason: "otp_not_found" }
+        details: { reason: "otp_not_found", contact_type: contact.contactType, contact_value: contact.contactValue }
       });
       throw new AppError("OTP not found. Request a new code.", 401);
     }
 
     if (now() > record.expiresAt.getTime()) {
-      await prisma.authOtpCode.delete({ where: { email: normalizedEmail } });
+      await prisma.authOtpCode.delete({ where: { contactValue: contact.contactValue } });
       recordFailure(attemptKey);
       await writeAuthAudit({
         action: "verify_otp",
         status: "FAIL",
-        email: normalizedEmail,
+        email: contact.contactType === "EMAIL" ? contact.contactValue : undefined,
         ip,
-        details: { reason: "otp_expired" }
+        details: { reason: "otp_expired", contact_type: contact.contactType, contact_value: contact.contactValue }
       });
       throw new AppError("OTP expired. Request a new code.", 401);
     }
@@ -206,47 +242,57 @@ class OtpService {
       await writeAuthAudit({
         action: "verify_otp",
         status: "FAIL",
-        email: normalizedEmail,
+        email: contact.contactType === "EMAIL" ? contact.contactValue : undefined,
         ip,
-        details: { reason: "otp_mismatch" }
+        details: { reason: "otp_mismatch", contact_type: contact.contactType, contact_value: contact.contactValue }
       });
       throw new AppError("Invalid OTP", 401);
     }
 
-    await prisma.authOtpCode.delete({ where: { email: normalizedEmail } });
+    await prisma.authOtpCode.delete({ where: { contactValue: contact.contactValue } });
     recordSuccess(attemptKey);
     await writeAuthAudit({
       action: "verify_otp",
       status: "PASS",
-      email: normalizedEmail,
-      ip
+      email: contact.contactType === "EMAIL" ? contact.contactValue : undefined,
+      ip,
+      details: { contact_type: contact.contactType, contact_value: contact.contactValue }
     });
   }
 
-  async verifyOtp(email: string, otp: string, ip: string) {
-    const normalizedEmail = email.toLowerCase();
-    await this.consumeOtp(normalizedEmail, otp, ip);
+  async verifyOtp(input: { email?: string; phone_number?: string }, otp: string, ip: string) {
+    const contact = this.resolveContact(input);
+    await this.consumeOtp(input, otp, ip);
 
     const token = createToken({
-      email: normalizedEmail
+      email:
+        contact.contactType === "EMAIL" ? contact.contactValue : `phone:${contact.contactValue}`
     });
 
     return { token, tokenType: "Bearer" };
   }
 
-  async assertValidOtp(email: string, otp: string, ip: string) {
-    await this.consumeOtp(email.toLowerCase(), otp, ip);
+  async assertValidOtp(input: { email?: string; phone_number?: string }, otp: string, ip: string) {
+    await this.consumeOtp(input, otp, ip);
   }
 }
 
 export const otpService = new OtpService();
 
 export const accountAuthService = {
-  async register(input: { email: string; id_number: string; password: string; otp: string }, ip: string) {
+  async register(
+    input: { email: string; phone_number?: string; otp_channel: "email" | "phone"; id_number: string; password: string; otp: string },
+    ip: string
+  ) {
     const email = input.email.trim().toLowerCase();
+    const phoneNumber = input.phone_number ? normalizePhoneNumber(input.phone_number) : undefined;
     const idNumber = normalizeIdNumber(input.id_number);
 
-    await otpService.assertValidOtp(email, input.otp, ip);
+    await otpService.assertValidOtp(
+      input.otp_channel === "phone" ? { phone_number: phoneNumber } : { email },
+      input.otp,
+      ip
+    );
     const existingAccounts = await prisma.account.count();
     const role = existingAccounts === 0 ? "ADMIN" : "USER";
 
@@ -254,6 +300,7 @@ export const accountAuthService = {
       const account = await prisma.account.create({
         data: {
           email,
+          phoneNumber,
           idNumber,
           passwordHash: passwordService.hashPassword(input.password),
           role
@@ -281,6 +328,7 @@ export const accountAuthService = {
         account: {
           id: account.id,
           email: account.email,
+          phone_number: account.phoneNumber,
           id_number: account.idNumber,
           role: account.role,
           company_id: account.companyId
@@ -302,6 +350,9 @@ export const accountAuthService = {
         if (target.includes("id_number") || target.includes("idNumber")) {
           throw new AppError("Account with this ID number already exists", 409);
         }
+        if (target.includes("phone_number") || target.includes("phoneNumber")) {
+          throw new AppError("Account with this phone number already exists", 409);
+        }
         throw new AppError("Account already exists", 409);
       }
 
@@ -310,13 +361,26 @@ export const accountAuthService = {
   },
 
   async registerBusiness(
-    input: { company_name: string; email: string; id_number: string; password: string; otp: string },
+    input: {
+      company_name: string;
+      email: string;
+      phone_number?: string;
+      otp_channel: "email" | "phone";
+      id_number: string;
+      password: string;
+      otp: string;
+    },
     ip: string
   ) {
     const email = input.email.trim().toLowerCase();
+    const phoneNumber = input.phone_number ? normalizePhoneNumber(input.phone_number) : undefined;
     const idNumber = normalizeIdNumber(input.id_number);
 
-    await otpService.assertValidOtp(email, input.otp, ip);
+    await otpService.assertValidOtp(
+      input.otp_channel === "phone" ? { phone_number: phoneNumber } : { email },
+      input.otp,
+      ip
+    );
 
     try {
       const result = await prisma.$transaction(async (tx) => {
@@ -324,6 +388,7 @@ export const accountAuthService = {
         const account = await tx.account.create({
           data: {
             email,
+            phoneNumber,
             idNumber,
             passwordHash: passwordService.hashPassword(input.password),
             role: "BUSINESS",
@@ -367,6 +432,7 @@ export const accountAuthService = {
         account: {
           id: result.account.id,
           email: result.account.email,
+          phone_number: result.account.phoneNumber,
           id_number: result.account.idNumber,
           role: result.account.role,
           company_id: result.account.companyId,
@@ -404,6 +470,9 @@ export const accountAuthService = {
         }
         if (target.includes("id_number") || target.includes("idNumber")) {
           throw new AppError("Account with this ID number already exists", 409);
+        }
+        if (target.includes("phone_number") || target.includes("phoneNumber")) {
+          throw new AppError("Account with this phone number already exists", 409);
         }
         if (target.includes("name")) {
           throw new AppError("Company with this name already exists", 409);
@@ -472,6 +541,7 @@ export const accountAuthService = {
       account: {
         id: account.id,
         email: account.email,
+        phone_number: account.phoneNumber,
         id_number: account.idNumber,
         role: account.role,
         company_id: account.companyId,
@@ -538,6 +608,7 @@ export const accountAuthService = {
     return {
       id: account.id,
       email: account.email,
+      phone_number: account.phoneNumber,
       id_number: account.idNumber,
       role: account.role,
       company_id: account.companyId,
@@ -551,6 +622,7 @@ export const accountAuthService = {
       select: {
         id: true,
         email: true,
+        phoneNumber: true,
         idNumber: true,
         role: true,
         companyId: true,
@@ -566,6 +638,7 @@ export const accountAuthService = {
     return accounts.map((account) => ({
       id: account.id,
       email: account.email,
+      phone_number: account.phoneNumber,
       id_number: account.idNumber,
       role: account.role,
       company_id: account.companyId,

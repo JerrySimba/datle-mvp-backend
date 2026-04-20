@@ -17,7 +17,7 @@ export const authRouter = Router();
 authRouter.post("/request-otp", async (req, res, next) => {
   try {
     const data = validateBody(requestOtpSchema, req.body);
-    const result = await otpService.requestOtp(data.email, req.ip || req.socket.remoteAddress || "unknown");
+    const result = await otpService.requestOtp(data, req.ip || req.socket.remoteAddress || "unknown");
     res.status(200).json(result);
   } catch (error) {
     next(error);
@@ -27,7 +27,7 @@ authRouter.post("/request-otp", async (req, res, next) => {
 authRouter.post("/verify-otp", async (req, res, next) => {
   try {
     const data = validateBody(verifyOtpSchema, req.body);
-    const result = await otpService.verifyOtp(data.email, data.otp, req.ip || req.socket.remoteAddress || "unknown");
+    const result = await otpService.verifyOtp(data, data.otp, req.ip || req.socket.remoteAddress || "unknown");
     res.status(200).json(result);
   } catch (error) {
     next(error);
@@ -79,9 +79,10 @@ authRouter.post("/logout", requireAuth, async (req, res, next) => {
 
 authRouter.patch("/accounts/:id/role", requireAuth, requireRoles("ADMIN"), async (req, res, next) => {
   try {
+    const accountId = String(req.params.id);
     const auth = (req as AuthenticatedRequest).auth;
     const data = validateBody(updateAccountRoleSchema, req.body);
-    const result = await accountAuthService.updateRole(req.params.id, data.role, {
+    const result = await accountAuthService.updateRole(accountId, data.role, {
       accountId: auth?.accountId || "",
       email: auth?.email
     }, data.company_id);

@@ -1,4 +1,4 @@
-import type { BusinessAccount, BusinessAuthResponse, Company, CreateStudyInput, Study, Summary } from "./types";
+import type { BusinessAccount, BusinessAuthResponse, Company, CreateStudyInput, InsightMessage, InsightResponse, Study, Summary } from "./types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
 const jsonHeaders = {
@@ -50,11 +50,11 @@ export const loginBusiness = async (payload: { identifier: string; password: str
   return (await response.json()) as BusinessAuthResponse;
 };
 
-export const requestOtp = async (email: string) => {
+export const requestOtp = async (payload: { email?: string; phone_number?: string }) => {
   const response = await fetch(`${API_BASE_URL}/api/auth/request-otp`, {
     method: "POST",
     headers: jsonHeaders,
-    body: JSON.stringify({ email })
+    body: JSON.stringify(payload)
   });
 
   if (!response.ok) {
@@ -65,6 +65,7 @@ export const requestOtp = async (email: string) => {
     message: string;
     expiresInMinutes: number;
     delivery: string;
+    contact_type: "email" | "phone";
     test_otp?: string;
   };
 };
@@ -72,6 +73,8 @@ export const requestOtp = async (email: string) => {
 export const registerBusiness = async (payload: {
   company_name: string;
   email: string;
+  phone_number?: string;
+  otp_channel: "email" | "phone";
   id_number: string;
   password: string;
   otp: string;
@@ -238,6 +241,27 @@ export const fetchSummary = async (
   }
 
   return (await response.json()) as Summary;
+};
+
+export const generateStudyInsights = async (
+  token: string,
+  studyId: string,
+  payload?: { question?: string; history?: InsightMessage[] }
+) => {
+  const response = await fetch(`${API_BASE_URL}/api/analytics/studies/${studyId}/insights`, {
+    method: "POST",
+    headers: {
+      ...jsonHeaders,
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify(payload || {})
+  });
+
+  if (!response.ok) {
+    throw new Error(await getError(response));
+  }
+
+  return (await response.json()) as InsightResponse;
 };
 
 export const downloadStudyExport = async (token: string, studyId: string, format: "json" | "csv") => {

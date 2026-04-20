@@ -104,6 +104,8 @@ function App() {
 
   const [authMode, setAuthMode] = useState<"register" | "login">("register");
   const [email, setEmail] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [otpChannel, setOtpChannel] = useState<"email" | "phone">("email");
   const [idNumber, setIdNumber] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -206,6 +208,8 @@ function App() {
     setStep(1);
     setOtpSent(false);
     setOtpCode("");
+    setPhoneNumber("");
+    setOtpChannel("email");
     setPassword("");
     setConfirmPassword("");
     setTestOtpHint("");
@@ -296,14 +300,23 @@ function App() {
   const onSendOtp = async () => {
     setError("");
     const normalizedEmail = email.trim().toLowerCase();
-    if (!normalizedEmail.includes("@")) {
-      setError("Enter a valid email before requesting OTP.");
+    const normalizedPhone = phoneNumber.trim();
+
+    if (otpChannel === "email") {
+      if (!normalizedEmail.includes("@")) {
+        setError("Enter a valid email before requesting OTP.");
+        return;
+      }
+    } else if (!/^\+?[1-9]\d{7,14}$/.test(normalizedPhone)) {
+      setError("Enter a valid phone number before requesting OTP.");
       return;
     }
 
     try {
       setLoading(true);
-      const result = await requestOtp(normalizedEmail);
+      const result = await requestOtp(
+        otpChannel === "email" ? { email: normalizedEmail } : { phone_number: normalizedPhone }
+      );
       setOtpSent(true);
       setTestOtpHint(result.test_otp || "");
     } catch (err) {
@@ -326,6 +339,11 @@ function App() {
     if (authMode === "register") {
       if (!normalizedEmail.includes("@")) {
         setError("Enter a valid email.");
+        return;
+      }
+
+      if (otpChannel === "phone" && !/^\+?[1-9]\d{7,14}$/.test(phoneNumber.trim())) {
+        setError("Enter a valid phone number.");
         return;
       }
 
@@ -354,6 +372,8 @@ function App() {
         authMode === "register"
           ? await registerAccount({
               email: normalizedEmail,
+              phone_number: phoneNumber.trim() || undefined,
+              otp_channel: otpChannel,
               id_number: normalizedId,
               password,
               otp: otpCode
@@ -625,7 +645,7 @@ function App() {
             <h3>{authMode === "register" ? "Create your account" : "Sign in to your account"}</h3>
             <p className="muted">
               {authMode === "register"
-                ? "Use your email, ID number, password, and a one-time code to create a verified respondent account."
+                ? "Use your email, ID number, password, and a one-time code delivered by email or phone to create a verified respondent account."
                 : "Sign in with either your email or your ID number."}
             </p>
             <div className="audience-switch" aria-hidden="true">
@@ -656,6 +676,20 @@ function App() {
               value={idNumber}
               onChange={(event) => setIdNumber(event.target.value)}
             />
+            {authMode === "register" && (
+              <>
+                <select value={otpChannel} onChange={(event) => setOtpChannel(event.target.value as "email" | "phone")}>
+                  <option value="email">Receive OTP by email</option>
+                  <option value="phone">Receive OTP by phone</option>
+                </select>
+                <input
+                  type="tel"
+                  placeholder="Phone number for OTP (e.g. +254712345678)"
+                  value={phoneNumber}
+                  onChange={(event) => setPhoneNumber(event.target.value)}
+                />
+              </>
+            )}
             <input
               type="password"
               placeholder="Password"
@@ -664,7 +698,11 @@ function App() {
             />
             {authMode === "register" && (
               <>
-                <button onClick={onSendOtp} disabled={loading || !email.trim()} type="button">
+                <button
+                  onClick={onSendOtp}
+                  disabled={loading || (otpChannel === "email" ? !email.trim() : !phoneNumber.trim())}
+                  type="button"
+                >
                   {loading ? "Sending OTP..." : otpSent ? "Resend OTP" : "Send OTP"}
                 </button>
                 <input
@@ -673,7 +711,9 @@ function App() {
                   value={otpCode}
                   onChange={(event) => setOtpCode(event.target.value)}
                 />
-                <p className="muted">We will verify your email before the account is created.</p>
+                <p className="muted">
+                  We will verify your {otpChannel === "email" ? "email" : "phone number"} before the account is created.
+                </p>
                 {testOtpHint && <p className="muted">Test OTP: {testOtpHint}</p>}
               </>
             )}
@@ -1143,12 +1183,14 @@ function App() {
   return (
     <main className="page">
       <header className="topbar">
-        <div className="logo">DatLe</div>
-        <nav>
-          <button className="nav-link" onClick={goHome} type="button">
+        <button className="brand-lockup" onClick={goHome} type="button">
+          <img className="brand-logo" src="/datle-logo.png" alt="DatLe" />
+        </button>
+        <nav className="topnav">
+          <button className={`nav-link ${route === "/" ? "active" : ""}`} onClick={goHome} type="button">
             Home
           </button>
-          <button className="nav-link" onClick={goAccount} type="button">
+          <button className={`nav-link ${route === "/account" ? "active" : ""}`} onClick={goAccount} type="button">
             Account
           </button>
           {token ? (

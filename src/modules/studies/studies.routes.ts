@@ -71,9 +71,10 @@ studiesRouter.get("/", async (_req, res, next) => {
 
 studiesRouter.patch("/:id/status", requireAuth, requireRoles("BUSINESS", "ADMIN"), async (req, res, next) => {
   try {
+    const studyId = String(req.params.id);
     const auth = (req as AuthenticatedRequest).auth;
     const data = validateBody(updateStudyStatusSchema, req.body);
-    const study = await studiesService.updateStatus(req.params.id, data.status, {
+    const study = await studiesService.updateStatus(studyId, data.status, {
       email: auth?.email || "",
       role: auth?.role,
       companyId: auth?.companyId
@@ -86,13 +87,14 @@ studiesRouter.patch("/:id/status", requireAuth, requireRoles("BUSINESS", "ADMIN"
 
 studiesRouter.get("/:id/responses", requireAuth, requireRoles("BUSINESS", "ADMIN"), async (req, res, next) => {
   try {
+    const studyId = String(req.params.id);
     const auth = (req as AuthenticatedRequest).auth;
-    await studiesService.assertAccountAccess(req.params.id, {
+    await studiesService.assertAccountAccess(studyId, {
       email: auth?.email || "",
       role: auth?.role,
       companyId: auth?.companyId
     });
-    const exportPayload = await studiesService.getResponsesExport(req.params.id);
+    const exportPayload = await studiesService.getResponsesExport(studyId);
     res.status(200).json(exportPayload);
   } catch (error) {
     next(error);
@@ -101,13 +103,14 @@ studiesRouter.get("/:id/responses", requireAuth, requireRoles("BUSINESS", "ADMIN
 
 studiesRouter.get("/:id/responses.csv", requireAuth, requireRoles("BUSINESS", "ADMIN"), async (req, res, next) => {
   try {
+    const studyId = String(req.params.id);
     const auth = (req as AuthenticatedRequest).auth;
-    await studiesService.assertAccountAccess(req.params.id, {
+    await studiesService.assertAccountAccess(studyId, {
       email: auth?.email || "",
       role: auth?.role,
       companyId: auth?.companyId
     });
-    const exportPayload = await studiesService.getResponsesExport(req.params.id);
+    const exportPayload = await studiesService.getResponsesExport(studyId);
     const payloadKeys = Array.from(
       new Set(
         exportPayload.rows.flatMap((row) =>
@@ -172,7 +175,7 @@ studiesRouter.get("/:id/responses.csv", requireAuth, requireRoles("BUSINESS", "A
 
 studiesRouter.get("/:id", async (req, res, next) => {
   try {
-    const study = await studiesService.getById(req.params.id);
+    const study = await studiesService.getById(String(req.params.id));
     res.status(200).json(study);
   } catch (error) {
     next(error);

@@ -7,6 +7,7 @@ import {
   fetchCompanies,
   fetchOwnedStudies,
   fetchSummary,
+  generateStudyInsights,
   loginBusiness,
   registerBusiness,
   requestOtp,
@@ -14,7 +15,15 @@ import {
   updateStudyStatus,
   updateAccountRole
 } from "./api";
-import type { BreakdownItem, BusinessAccount, BusinessAuthResponse, Company, Study, Summary } from "./types";
+import type {
+  BreakdownItem,
+  BusinessAccount,
+  BusinessAuthResponse,
+  Company,
+  InsightMessage,
+  Study,
+  Summary
+} from "./types";
 
 const SESSION_STORAGE_KEY = "datle-dashboard-session";
 
@@ -225,6 +234,8 @@ function App() {
   const [password, setPassword] = useState("");
   const [signupCompanyName, setSignupCompanyName] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
+  const [signupPhoneNumber, setSignupPhoneNumber] = useState("");
+  const [signupOtpChannel, setSignupOtpChannel] = useState<"email" | "phone">("email");
   const [signupIdNumber, setSignupIdNumber] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupOtp, setSignupOtp] = useState("");
@@ -235,6 +246,11 @@ function App() {
   const [studies, setStudies] = useState<Study[]>([]);
   const [studyId, setStudyId] = useState("");
   const [summary, setSummary] = useState<Summary | null>(null);
+  const [insightHistory, setInsightHistory] = useState<InsightMessage[]>([]);
+  const [aiQuestion, setAiQuestion] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [insightModel, setInsightModel] = useState("");
+  const [insightGeneratedAt, setInsightGeneratedAt] = useState("");
   const [accounts, setAccounts] = useState<BusinessAccount[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(false);
@@ -331,6 +347,10 @@ function App() {
     setDimensionFilters({});
     setFrom("");
     setTo("");
+    setInsightHistory([]);
+    setAiQuestion("");
+    setInsightModel("");
+    setInsightGeneratedAt("");
   }, [studyId]);
 
   useEffect(() => {
@@ -562,17 +582,31 @@ function App() {
   const handleRequestOtp = async () => {
     setError("");
     setSuccess("");
-    if (!signupEmail.trim()) {
-      setError("Enter your business email before requesting an OTP.");
+    const normalizedEmail = signupEmail.trim().toLowerCase();
+    const normalizedPhone = signupPhoneNumber.trim();
+
+    if (signupOtpChannel === "email") {
+      if (!normalizedEmail) {
+        setError("Enter your business email before requesting an OTP.");
+        return;
+      }
+    } else if (!/^\+?[1-9]\d{7,14}$/.test(normalizedPhone)) {
+      setError("Enter your business phone number before requesting an OTP.");
       return;
     }
 
     try {
       setLoading(true);
-      const result = await requestOtp(signupEmail.trim());
+      const result = await requestOtp(
+        signupOtpChannel === "email" ? { email: normalizedEmail } : { phone_number: normalizedPhone }
+      );
       setOtpRequested(true);
       setTestOtpHint(result.test_otp || "");
-      setSuccess(`OTP sent to ${signupEmail.trim()}. It expires in ${result.expiresInMinutes} minutes.`);
+      setSuccess(
+        `OTP sent to ${
+          signupOtpChannel === "email" ? normalizedEmail : normalizedPhone
+        }. It expires in ${result.expiresInMinutes} minutes.`
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to request OTP");
     } finally {
@@ -594,11 +628,18 @@ function App() {
       return;
     }
 
+    if (signupOtpChannel === "phone" && !/^\+?[1-9]\d{7,14}$/.test(signupPhoneNumber.trim())) {
+      setError("Enter a valid phone number for phone OTP.");
+      return;
+    }
+
     try {
       setLoading(true);
       const result = await registerBusiness({
         company_name: signupCompanyName.trim(),
         email: signupEmail.trim(),
+        phone_number: signupPhoneNumber.trim() || undefined,
+        otp_channel: signupOtpChannel,
         id_number: signupIdNumber.trim(),
         password: signupPassword,
         otp: signupOtp.trim()
@@ -814,6 +855,38 @@ function App() {
     }
   };
 
+  const handleGenerateInsights = async (questionOverride?: string) => {
+    if (!token || !studyId) {
+      return;
+    }
+
+    const trimmedQuestion = (questionOverride ?? aiQuestion).trim();
+
+    try {
+      setAiLoading(true);
+      setError("");
+      const priorHistory = insightHistory;
+
+      const response = await generateStudyInsights(token, studyId, {
+        question: trimmedQuestion || undefined,
+        history: priorHistory
+      });
+
+      setInsightHistory((current) => [
+        ...current,
+        ...(trimmedQuestion ? [{ role: "user" as const, content: trimmedQuestion }] : []),
+        { role: "assistant", content: response.answer }
+      ]);
+      setInsightModel(response.model);
+      setInsightGeneratedAt(response.generated_at);
+      setAiQuestion("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to generate AI insights");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   if (bootstrapping) {
     return (
       <main className="app">
@@ -828,13 +901,16 @@ function App() {
   if (!token || !account) {
     return (
       <main className="app">
-        <header className="hero">
+        <header className="hero auth-hero">
+          <div className="brand-lockup">
+            <img className="brand-logo" src="/datle-logo.png" alt="DatLe" />
+          </div>
           <p className="kicker">DatLe Business Intelligence</p>
           <h1>{authMode === "login" ? "Access Your Business Dashboard" : "Create Your Business Workspace"}</h1>
           <p className="lede">
             {authMode === "login"
               ? "Sign in with your business or admin account to review study performance, quota progress, analytics, and exports."
-              : "Create your business workspace, verify your email with OTP, and go straight into the dashboard with company ownership already set up."}
+              : "Create your business workspace, verify by email or phone OTP, and go straight into the dashboard with company ownership already set up."}
           </p>
         </header>
 
@@ -912,6 +988,24 @@ function App() {
                 />
               </div>
               <div className="field">
+                <label>Phone number for OTP</label>
+                <input
+                  placeholder="+254712345678"
+                  value={signupPhoneNumber}
+                  onChange={(event) => setSignupPhoneNumber(event.target.value)}
+                />
+              </div>
+              <div className="field">
+                <label>OTP delivery</label>
+                <select
+                  value={signupOtpChannel}
+                  onChange={(event) => setSignupOtpChannel(event.target.value as "email" | "phone")}
+                >
+                  <option value="email">Email OTP</option>
+                  <option value="phone">Phone OTP</option>
+                </select>
+              </div>
+              <div className="field">
                 <label>ID number</label>
                 <input
                   placeholder="ID number"
@@ -937,7 +1031,9 @@ function App() {
                   {loading ? "Sending..." : otpRequested ? "Resend OTP" : "Request OTP"}
                 </button>
               </div>
-              <p className="subtle-note">We use the OTP to verify the email that will own the initial business workspace.</p>
+              <p className="subtle-note">
+                We use the OTP to verify the {signupOtpChannel === "email" ? "email" : "phone number"} that will own the initial business workspace.
+              </p>
               {testOtpHint && <p className="subtle-note">Test OTP: {testOtpHint}</p>}
               <button className="primary-action" onClick={handleBusinessSignup} disabled={loading} type="button">
                 {loading ? "Creating workspace..." : "Create business workspace"}
@@ -952,7 +1048,10 @@ function App() {
   return (
     <main className="app">
       <header className="hero dashboard-hero">
-        <div>
+        <div className="hero-copy">
+          <div className="brand-lockup">
+            <img className="brand-logo" src="/datle-logo.png" alt="DatLe" />
+          </div>
           <p className="kicker">DatLe Business Intelligence</p>
           <h1>Business Study Dashboard</h1>
           <p className="lede">This workspace shows only the studies, analytics, and exports owned by your business account or company.</p>
@@ -1490,6 +1589,64 @@ function App() {
                     </div>
                   ))}
                 </div>
+              </section>
+
+              <section className="panel">
+                <div className="builder-header">
+                  <div>
+                    <h3>AI Insight Analyst</h3>
+                    <p className="lede">
+                      Generate decision-ready findings from the selected study and ask follow-up questions in plain language.
+                    </p>
+                  </div>
+                  <button className="primary-action" onClick={() => handleGenerateInsights()} disabled={aiLoading} type="button">
+                    {aiLoading ? "Generating..." : "Generate insight brief"}
+                  </button>
+                </div>
+
+                <div className="field builder-span-2">
+                  <label>Ask a follow-up question</label>
+                  <textarea
+                    value={aiQuestion}
+                    onChange={(event) => setAiQuestion(event.target.value)}
+                    rows={3}
+                    placeholder="Example: Which segments look most price sensitive, and what should we do next?"
+                  />
+                </div>
+                <div className="actions-row">
+                  <button
+                    className="secondary-action"
+                    onClick={() => handleGenerateInsights(aiQuestion)}
+                    disabled={aiLoading || !aiQuestion.trim()}
+                    type="button"
+                  >
+                    {aiLoading ? "Thinking..." : "Ask AI"}
+                  </button>
+                </div>
+
+                {insightModel && (
+                  <p className="subtle-note">
+                    Generated by {insightModel}
+                    {insightGeneratedAt ? ` on ${new Date(insightGeneratedAt).toLocaleString()}` : ""}
+                  </p>
+                )}
+
+                {insightHistory.length === 0 ? (
+                  <p className="subtle-note">
+                    Start with a one-click brief, then ask follow-up questions about segments, patterns, and next actions.
+                  </p>
+                ) : (
+                  <div className="rows">
+                    {insightHistory.map((message, index) => (
+                      <div key={`${message.role}-${index}`} className={`question ${message.role === "assistant" ? "insight-answer" : ""}`}>
+                        <div className="row-head">
+                          <span>{message.role === "assistant" ? "DatLe AI" : "You"}</span>
+                        </div>
+                        <p style={{ whiteSpace: "pre-wrap" }}>{message.content}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </section>
             </>
           )}

@@ -24,6 +24,7 @@ export type BusinessAuthResponse = {
   account: {
     id: string;
     email: string;
+    phone_number?: string | null;
     id_number: string;
     company_id?: string | null;
     company_name?: string | null;
@@ -35,6 +36,7 @@ export type BusinessAuthResponse = {
 export type BusinessAccount = {
   id: string;
   email: string;
+  phone_number?: string | null;
   id_number: string;
   role: "USER" | "BUSINESS" | "ADMIN";
   company_id?: string | null;
@@ -101,4 +103,15 @@ export type Summary = {
     age: BreakdownItem[];
   };
   question_stats: QuestionStat[];
+};
+
+export type InsightMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+export type InsightResponse = {
+  answer: string;
+  model: string;
+  generated_at: string;
 };

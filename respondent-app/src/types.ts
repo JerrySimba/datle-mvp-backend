@@ -63,6 +63,7 @@ export type AccountAuthResponse = {
   account: {
     id: string;
     email: string;
+    phone_number?: string | null;
     id_number: string;
     role?: string;
   };

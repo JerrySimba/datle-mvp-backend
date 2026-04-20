@@ -15,7 +15,14 @@ const getError = async (response: Response) => {
   }
 };
 
-export const registerAccount = async (payload: { email: string; id_number: string; password: string; otp: string }) => {
+export const registerAccount = async (payload: {
+  email: string;
+  phone_number?: string;
+  otp_channel: "email" | "phone";
+  id_number: string;
+  password: string;
+  otp: string;
+}) => {
   const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
     method: "POST",
     headers: jsonHeaders,
@@ -29,18 +36,24 @@ export const registerAccount = async (payload: { email: string; id_number: strin
   return (await response.json()) as AccountAuthResponse;
 };
 
-export const requestOtp = async (email: string) => {
+export const requestOtp = async (payload: { email?: string; phone_number?: string }) => {
   const response = await fetch(`${API_BASE_URL}/api/auth/request-otp`, {
     method: "POST",
     headers: jsonHeaders,
-    body: JSON.stringify({ email })
+    body: JSON.stringify(payload)
   });
 
   if (!response.ok) {
     throw new Error(await getError(response));
   }
 
-  return (await response.json()) as { message: string; expiresInMinutes: number; delivery: string; test_otp?: string };
+  return (await response.json()) as {
+    message: string;
+    expiresInMinutes: number;
+    delivery: string;
+    contact_type: "email" | "phone";
+    test_otp?: string;
+  };
 };
 
 export const loginAccount = async (payload: { identifier: string; password: string }) => {

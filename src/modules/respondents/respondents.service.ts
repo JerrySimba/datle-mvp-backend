@@ -270,7 +270,11 @@ export const respondentsService = {
         return;
       }
 
-      const quotaStatus = Array.isArray(card.eligibility?.quota_status) ? card.eligibility.quota_status : [];
+      const quotaStatus = Array.isArray(card.eligibility?.quota_status)
+        ? card.eligibility.quota_status.filter(
+            (quota): quota is NonNullable<(typeof card.eligibility.quota_status)[number]> => quota !== null
+          )
+        : [];
       if (quotaStatus.length > 0 && quotaStatus.every((quota) => quota.remaining <= 0)) {
         unavailable.push({
           ...card,
