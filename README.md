@@ -144,6 +144,102 @@ cd ../respondent-app && npm run build
 8. Build and deploy `respondent-app/` with `VITE_API_BASE_URL` pointing to backend.
 9. Confirm `GET /health` works from the deployed backend.
 
+## Vercel Frontend Hosting
+
+Use Vercel for the two frontend apps in this monorepo:
+
+- `dashboard/`
+- `respondent-app/`
+
+This repository now includes Vercel SPA rewrites for both apps so direct visits to client-side routes like `/account` resolve correctly:
+
+- [dashboard/vercel.json](dashboard/vercel.json)
+- [respondent-app/vercel.json](respondent-app/vercel.json)
+
+Recommended production topology:
+
+1. Host the backend API on a Node-friendly service such as Railway, Render, Fly.io, or a VPS.
+2. Host `dashboard/` on Vercel.
+3. Host `respondent-app/` on Vercel.
+4. Point both frontend projects to the deployed backend with `VITE_API_BASE_URL`.
+
+Why split it this way:
+
+- the two frontend apps are static Vite builds and fit Vercel well
+- the backend is a long-running Express + Prisma service and is cleaner to run on a traditional Node host
+
+### Importing the Monorepo into Vercel
+
+For each frontend, create a separate Vercel project from the same GitHub repository and set its Root Directory:
+
+1. Import `JerrySimba/datle-mvp-backend`
+2. Create one project with Root Directory `dashboard`
+3. Create another project with Root Directory `respondent-app`
+
+Set this environment variable on both Vercel projects:
+
+```bash
+VITE_API_BASE_URL=https://your-backend-domain.com
+```
+
+Then deploy.
+
+### Backend Note
+
+If you want the backend on Vercel too, that is a different deployment shape and would require adapting the Express server into Vercel Functions or another serverless-compatible layout. This repo is not currently set up that way.
+
+## Railway Backend Hosting
+
+This repository now includes a Railway deployment config:
+
+- [railway.toml](railway.toml)
+
+It configures:
+
+- `npm start` as the start command
+- `npx prisma migrate deploy` as the pre-deploy migration step
+- `/health` as the healthcheck path
+
+### Recommended Railway setup
+
+1. Create a new Railway project
+2. Add a PostgreSQL service
+3. Add a GitHub-backed service from this repository
+4. Set the root directory to the repository root
+5. Confirm Railway picks up [railway.toml](railway.toml)
+
+Set these service variables on the backend service:
+
+```bash
+NODE_ENV=production
+PORT=4000
+DATABASE_URL=postgresql://...
+JWT_SECRET=your-strong-secret
+CORS_ORIGIN=https://your-dashboard-domain.vercel.app,https://your-respondent-domain.vercel.app
+OTP_EMAIL_PROVIDER=console
+OTP_SMS_PROVIDER=console
+OPENAI_API_KEY=your-openai-key
+OPENAI_MODEL=gpt-5.2
+AUTH_TOKEN_TTL_MINUTES=1440
+AUTH_MAX_ATTEMPTS=5
+AUTH_LOCK_MINUTES=15
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=200
+```
+
+Then replace the OTP providers as needed:
+
+- Email: set `OTP_EMAIL_PROVIDER=resend` and provide `RESEND_API_KEY` and `RESEND_FROM_EMAIL`
+- SMS: set `OTP_SMS_PROVIDER=twilio` and provide `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and either `TWILIO_FROM_NUMBER` or `TWILIO_MESSAGING_SERVICE_SID`
+
+### After Railway gives you a live backend URL
+
+Set this on both Vercel frontend projects:
+
+```bash
+VITE_API_BASE_URL=https://your-railway-backend.up.railway.app
+```
+
 ## Pilot Readiness Checks
 
 Run these after deployment:
