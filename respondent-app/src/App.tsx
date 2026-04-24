@@ -24,6 +24,7 @@ type StoredSession = {
   email: string;
   idNumber: string;
   accountRole: string;
+  welcomeVariant?: "welcome" | "welcome_back";
 };
 
 const SESSION_STORAGE_KEY = "datle-respondent-session";
@@ -132,6 +133,7 @@ function App() {
   const [activeStudyId, setActiveStudyId] = useState("");
   const [answers, setAnswers] = useState<Record<string, AnswerValue>>({});
   const [submitted, setSubmitted] = useState(false);
+  const [welcomeVariant, setWelcomeVariant] = useState<"welcome" | "welcome_back">("welcome_back");
 
   useEffect(() => {
     const onPopState = () => setRoute(getRoute());
@@ -248,6 +250,7 @@ function App() {
       setEmail(stored.email);
       setIdNumber(stored.idNumber);
       setAccountRole(stored.accountRole);
+      setWelcomeVariant(stored.welcomeVariant || "welcome_back");
 
       try {
         const profile = await fetchMyRespondent(stored.token);
@@ -387,13 +390,15 @@ function App() {
         token: result.token,
         email: result.account.email,
         idNumber: result.account.id_number,
-        accountRole: result.account.role || ""
+        accountRole: result.account.role || "",
+        welcomeVariant: authMode === "register" ? "welcome" : "welcome_back"
       };
 
       setToken(session.token);
       setEmail(session.email);
       setIdNumber(session.idNumber);
       setAccountRole(session.accountRole);
+      setWelcomeVariant(session.welcomeVariant || "welcome_back");
       writeStoredSession(session);
 
       const profile = await fetchMyRespondent(result.token);
@@ -426,6 +431,7 @@ function App() {
       setEmail("");
       setIdNumber("");
       setError("");
+      setWelcomeVariant("welcome_back");
       goHome();
     }
   };
@@ -920,7 +926,7 @@ function App() {
         <div className="dashboard-hero">
           <div>
             <p className="kicker">Respondent Dashboard</p>
-            <h1>Welcome back</h1>
+            <h1>{welcomeVariant === "welcome" ? "Welcome" : "Welcome back"}</h1>
             <p className="muted">
               Review your activity, see your saved profile status, and choose a study when you are ready.
             </p>
@@ -1193,11 +1199,6 @@ function App() {
           <button className={`nav-link ${route === "/account" ? "active" : ""}`} onClick={goAccount} type="button">
             Account
           </button>
-          {token ? (
-            <button onClick={onLogout} className="btn secondary action-btn" type="button">
-              Logout
-            </button>
-          ) : null}
         </nav>
       </header>
 

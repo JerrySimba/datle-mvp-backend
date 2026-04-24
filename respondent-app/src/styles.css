@@ -71,12 +71,11 @@ img {
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  padding: 12px 18px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.86);
-  backdrop-filter: blur(18px);
-  box-shadow: 0 14px 30px rgba(14, 33, 61, 0.08);
+  padding: 8px 0 10px;
+  border: none;
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
 }
 
 .brand-lockup {
@@ -93,8 +92,8 @@ img {
 }
 
 .brand-logo {
-  width: 224px;
-  height: 72px;
+  width: 274px;
+  height: 92px;
   object-fit: contain;
   object-position: left center;
 }
@@ -102,7 +101,7 @@ img {
 .topnav {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 24px;
   margin-left: auto;
 }
 
@@ -114,20 +113,19 @@ nav button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 44px;
-  padding: 10px 16px;
-  border-radius: 999px;
-  border: 1px solid transparent;
+  min-height: auto;
+  padding: 0;
+  border-radius: 0;
+  border: none;
   background: transparent;
   color: var(--muted);
   font-weight: 600;
-  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+  box-shadow: none;
+  transition: color 160ms ease, opacity 160ms ease;
 }
 
 .nav-link:hover,
 .nav-link.active {
-  background: rgba(11, 31, 109, 0.06);
-  border-color: rgba(11, 31, 109, 0.08);
   color: var(--brand);
 }
 
@@ -209,11 +207,6 @@ button,
   background: rgba(255, 255, 255, 0.74);
   border-color: rgba(29, 165, 255, 0.22);
   color: var(--brand);
-}
-
-.topnav .action-btn {
-  min-height: 44px;
-  padding-inline: 16px;
 }
 
 button:disabled,
@@ -485,6 +478,12 @@ select:focus {
     linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(243, 248, 255, 0.9));
 }
 
+.dashboard-actions .btn.secondary {
+  background: transparent;
+  border-color: var(--line);
+  box-shadow: none;
+}
+
 .activity-metrics {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   margin: 18px 0;
@@ -557,13 +556,10 @@ select:focus {
   justify-content: space-between;
   gap: 24px;
   align-items: flex-start;
-  padding: 28px;
-  border-radius: var(--radius-xl);
-  border: 1px solid var(--line);
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(235, 246, 255, 0.92)),
-    radial-gradient(circle at top right, rgba(29, 165, 255, 0.16), transparent 38%);
-  box-shadow: var(--shadow-lg);
+  padding: 10px 0 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
 }
 
 .dashboard-hero h1 {
@@ -704,9 +700,9 @@ select:focus {
 
   .topbar {
     position: static;
-    border-radius: 24px;
     flex-direction: column;
-    align-items: stretch;
+    align-items: flex-start;
+    gap: 12px;
   }
 
   .brand-lockup {
@@ -714,17 +710,16 @@ select:focus {
   }
 
   .brand-logo {
-    width: 176px;
-    height: 58px;
+    width: 208px;
+    height: 70px;
   }
 
   .topnav {
     width: 100%;
-    justify-content: space-between;
+    justify-content: flex-start;
     flex-wrap: wrap;
   }
 
-  .nav-link,
   .action-btn,
   .shell-button,
   .btn {
