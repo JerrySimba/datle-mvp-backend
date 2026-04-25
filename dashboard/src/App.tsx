@@ -552,7 +552,7 @@ function App() {
     setError("");
     setSuccess("");
     if (!identifier.trim() || !password.trim()) {
-      setError("Enter your business email or ID number and password.");
+      setError("Enter your business email or KRA PIN and password.");
       return;
     }
 
@@ -624,7 +624,7 @@ function App() {
       !signupPassword.trim() ||
       !signupOtp.trim()
     ) {
-      setError("Complete the company, email, ID number, password, and OTP fields.");
+      setError("Complete the company, email, KRA PIN, password, and OTP fields.");
       return;
     }
 
@@ -902,8 +902,11 @@ function App() {
     return (
       <main className="app">
         <header className="hero auth-hero">
-          <div className="brand-lockup">
-            <img className="brand-logo" src="/datle-logo.png" alt="DatLe" />
+          <div className="brand-lockup" aria-label="DatLe">
+            <span className="brand-wordmark">
+              <span>Dat</span>
+              <span className="brand-wordmark-accent">Le</span>
+            </span>
           </div>
           <p className="kicker">DatLe Business Intelligence</p>
           <h1>{authMode === "login" ? "Access Your Business Dashboard" : "Create Your Business Workspace"}</h1>
@@ -946,9 +949,9 @@ function App() {
           {authMode === "login" ? (
             <>
               <div className="field">
-                <label>Email or ID number</label>
+                <label>Email or KRA PIN</label>
                 <input
-                  placeholder="business@datle.com or ID number"
+                  placeholder="business@datle.com or KRA PIN"
                   value={identifier}
                   onChange={(event) => setIdentifier(event.target.value)}
                 />
@@ -1006,9 +1009,9 @@ function App() {
                 </select>
               </div>
               <div className="field">
-                <label>ID number</label>
+                <label>KRA PIN</label>
                 <input
-                  placeholder="ID number"
+                  placeholder="KRA PIN"
                   value={signupIdNumber}
                   onChange={(event) => setSignupIdNumber(event.target.value)}
                 />
@@ -1396,7 +1399,7 @@ function App() {
                 <div>
                   <strong>{businessAccount.email}</strong>
                   <span>
-                    {businessAccount.id_number} | Joined {new Date(businessAccount.created_at).toLocaleDateString()}
+                    KRA PIN: {businessAccount.id_number} | Joined {new Date(businessAccount.created_at).toLocaleDateString()}
                   </span>
                   <span>Company: {businessAccount.company_name || "Unassigned"}</span>
                 </div>

@@ -1190,7 +1190,10 @@ function App() {
     <main className="page">
       <header className="topbar">
         <button className="brand-lockup" onClick={goHome} type="button">
-          <img className="brand-logo" src="/datle-logo.png" alt="DatLe" />
+          <span className="brand-wordmark" aria-label="DatLe">
+            <span>Dat</span>
+            <span className="brand-wordmark-accent">Le</span>
+          </span>
         </button>
         <nav className="topnav">
           <button className={`nav-link ${route === "/" ? "active" : ""}`} onClick={goHome} type="button">

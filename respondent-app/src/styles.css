@@ -91,11 +91,18 @@ img {
   box-shadow: none;
 }
 
-.brand-logo {
-  width: 274px;
-  height: 92px;
-  object-fit: contain;
-  object-position: left center;
+.brand-wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  font-size: clamp(2rem, 4vw, 3.35rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0;
+  color: var(--brand);
+}
+
+.brand-wordmark-accent {
+  color: var(--brand-soft);
 }
 
 .topnav {
@@ -709,9 +716,8 @@ select:focus {
     justify-content: flex-start;
   }
 
-  .brand-logo {
-    width: 208px;
-    height: 70px;
+  .brand-wordmark {
+    font-size: clamp(1.8rem, 8vw, 2.6rem);
   }
 
   .topnav {
