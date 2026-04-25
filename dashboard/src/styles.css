@@ -361,7 +361,29 @@ textarea:focus {
 
 .dashboard-hero {
   align-items: flex-start;
-  padding-top: 8px;
+  padding: 8px 0 6px;
+}
+
+.dashboard-hero-copy {
+  max-width: 680px;
+}
+
+.dashboard-brand-lockup {
+  margin-bottom: 6px;
+}
+
+.dashboard-wordmark {
+  font-size: clamp(1.75rem, 3vw, 2.55rem);
+}
+
+.dashboard-title {
+  font-size: clamp(2rem, 4vw, 3.1rem);
+  line-height: 1.02;
+}
+
+.dashboard-lede {
+  max-width: 640px;
+  font-size: 16px;
 }
 
 .account-card {
@@ -369,6 +391,7 @@ textarea:focus {
   padding: 18px;
   background: rgba(255, 255, 255, 0.86);
   box-shadow: none;
+  align-self: flex-start;
 }
 
 .account-card strong,
@@ -536,6 +559,14 @@ button:disabled,
 
   .brand-wordmark {
     font-size: clamp(1.8rem, 8vw, 2.6rem);
+  }
+
+  .dashboard-wordmark {
+    font-size: clamp(1.65rem, 8vw, 2.1rem);
+  }
+
+  .dashboard-title {
+    font-size: clamp(1.9rem, 8vw, 2.5rem);
   }
 
   .dashboard-hero,

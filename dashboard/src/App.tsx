@@ -1051,13 +1051,18 @@ function App() {
   return (
     <main className="app">
       <header className="hero dashboard-hero">
-        <div className="hero-copy">
-          <div className="brand-lockup">
-            <img className="brand-logo" src="/datle-logo.png" alt="DatLe" />
+        <div className="hero-copy dashboard-hero-copy">
+          <div className="brand-lockup dashboard-brand-lockup" aria-label="DatLe">
+            <span className="brand-wordmark dashboard-wordmark">
+              <span>Dat</span>
+              <span className="brand-wordmark-accent">Le</span>
+            </span>
           </div>
           <p className="kicker">DatLe Business Intelligence</p>
-          <h1>Business Study Dashboard</h1>
-          <p className="lede">This workspace shows only the studies, analytics, and exports owned by your business account or company.</p>
+          <h1 className="dashboard-title">Business Study Dashboard</h1>
+          <p className="lede dashboard-lede">
+            This workspace shows only the studies, analytics, and exports owned by your business account or company.
+          </p>
         </div>
         <div className="account-card">
           <strong>{account.email}</strong>
@@ -1597,7 +1602,7 @@ function App() {
               <section className="panel">
                 <div className="builder-header">
                   <div>
-                    <h3>AI Insight Analyst</h3>
+                    <h3>DatLe AI</h3>
                     <p className="lede">
                       Generate decision-ready findings from the selected study and ask follow-up questions in plain language.
                     </p>
@@ -1636,7 +1641,7 @@ function App() {
 
                 {insightHistory.length === 0 ? (
                   <p className="subtle-note">
-                    Start with a one-click brief, then ask follow-up questions about segments, patterns, and next actions.
+                    DatLe AI generates board-ready insights in seconds - grounded in your live consumer data.
                   </p>
                 ) : (
                   <div className="rows">
