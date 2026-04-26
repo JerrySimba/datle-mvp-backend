@@ -28,6 +28,7 @@ type StoredSession = {
 };
 
 const SESSION_STORAGE_KEY = "datle-respondent-session";
+const BUSINESS_APP_URL = import.meta.env.VITE_BUSINESS_APP_URL || "http://localhost:5173";
 
 const fallbackSurveySections: SurveySection[] = [
   {
@@ -61,6 +62,10 @@ const pushRoute = (route: Route) => {
   if (window.location.pathname !== route) {
     window.history.pushState({}, "", route);
   }
+};
+
+const goBusinessApp = () => {
+  window.location.assign(BUSINESS_APP_URL);
 };
 
 const readStoredSession = (): StoredSession | null => {
@@ -610,9 +615,13 @@ function App() {
           DatLe connects verified respondents and businesses through structured studies designed for reliable product
           and market decisions.
         </p>
-        <div className="audience-switch" aria-hidden="true">
-          <button className="audience-btn active">For Respondents</button>
-          <button className="audience-btn">For Businesses</button>
+        <div className="audience-switch">
+          <button className="audience-btn active" type="button">
+            For Respondents
+          </button>
+          <button className="audience-btn" onClick={goBusinessApp} type="button">
+            For Businesses
+          </button>
         </div>
         <div className="steps">
           <article>
